@@ -111,23 +111,38 @@ router.post('/:id/items', async (req, res) => {
 
 // ---- List orders (defaults to today, IST) ----
 router.get('/', async (req, res) => {
-  const date = req.query.date || todayIST();
-  const [rows] = await pool.query(
-    `SELECT id,table_no,customer_name,status,payment_status,payment_mode,total,created_at
-     FROM orders WHERE restaurant_id=? AND DATE(created_at, '${IST_SHIFT}')=? ORDER BY created_at DESC`,
-    [req.restaurant_id, date]
-  );
-  // Kitchen/waiter need to see WHAT to cook/serve, not just the bill total —
-  // attach each order's items. List is small (a day's orders), so a query
-  // per order is fine.
-  for (const order of rows) {
-    const [items] = await pool.query(
-      'SELECT item_name, qty FROM order_items WHERE order_id=?',
-      [order.id]
+  try {
+    const date = req.query.date || todayIST();
+    const [rows] = await pool.query(
+      `SELECT id,table_no,customer_name,status,payment_status,payment_mode,total,created_at
+       FROM orders WHERE restaurant_id=? AND DATE(created_at, '${IST_SHIFT}')=? ORDER BY created_at DESC`,
+      [req.restaurant_id, date]
     );
-    order.items = items;
+
+    // Kitchen/waiter need to see WHAT to cook/serve, not just the bill total —
+    // attach each order's items. Fetched in ONE query (not one-per-order):
+    // a one-query-per-order loop meant a single transient failure could take
+    // down the whole list with no error shown.
+    if (rows.length > 0) {
+      const ids = rows.map((r) => r.id);
+      const placeholders = ids.map(() => '?').join(',');
+      const [allItems] = await pool.query(
+        `SELECT order_id, item_name, qty FROM order_items WHERE order_id IN (${placeholders})`,
+        ids
+      );
+      const itemsByOrder = {};
+      allItems.forEach((it) => {
+        if (!itemsByOrder[it.order_id]) itemsByOrder[it.order_id] = [];
+        itemsByOrder[it.order_id].push({ item_name: it.item_name, qty: it.qty });
+      });
+      rows.forEach((o) => { o.items = itemsByOrder[o.id] || []; });
+    }
+
+    res.json(rows);
+  } catch (err) {
+    console.error('List orders error:', err.message);
+    res.status(500).json({ error: err.message || 'Could not load orders' });
   }
-  res.json(rows);
 });
 
 // ---- Single order with line items ----

@@ -23,9 +23,16 @@ export default function Orders() {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
+  // IMPORTANT: always handle the failure case — without a .catch() here, a
+  // failed request silently leaves `orders` empty and looks exactly like
+  // "no orders today" even though the data is fine on the server.
   function load() {
-    api.get('/orders').then(({ data }) => setOrders(data)).finally(() => setLoading(false));
+    api.get('/orders')
+      .then(({ data }) => { setOrders(data); setError(''); })
+      .catch((err) => setError(err.response?.data?.error || (lang === 'hi' ? 'Orders load nahi hue' : 'Could not load orders')))
+      .finally(() => setLoading(false));
   }
 
   useEffect(() => { load(); }, []);
@@ -64,7 +71,10 @@ export default function Orders() {
         </Link>
 
         {loading && <p className="text-center text-ledger-inkSoft mt-8">{t('loading')}</p>}
-        {!loading && orders.length === 0 && (
+        {!loading && error && (
+          <p className="text-center text-red-600 text-sm mt-8">⚠ {error}</p>
+        )}
+        {!loading && !error && orders.length === 0 && (
           <p className="text-center text-ledger-inkSoft mt-8 text-sm">{t('no_orders')}</p>
         )}
 

@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  /* Slightly darker surrounding strip so the phone-width app reads as
+     intentional on wide desktop screens, instead of empty whitespace. */
+  background-color: #E5E7EB;
+  color: #111827;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Mobile-first app — cap width and center on desktop so buttons/cards
+   don't end up stretched across a huge, mostly-empty page. On phones
+   (viewport <= 480px) this has no visible effect. */
+#root {
+  max-width: 480px;
+  margin: 0 auto;
+  background-color: #F3F4F6;
+  box-shadow: 0 0 1px rgba(0,0,0,0.04);
+}
+
+.figure {
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-bg {
+  background-color: #F3F4F6;
+}
+
+/* Card shadow utility */
+.card {
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(185,28,28,0.06);
+}
+
+/* Thermal receipt block is print-only — must stay hidden during normal
+   browsing (it only has a display rule inside @media print below). */
+.thermal-receipt {
+  display: none;
+}
+
+/* ── Print styles ── */
+@media print {
+  .print-hidden { display: none !important; }
+  body { background: white !important; }
+  #root { max-width: none !important; margin: 0 !important; box-shadow: none !important; }
+  .card { box-shadow: none !important; border: 1px solid #e5e7eb !important; }
+  .ledger-bg { background: white !important; }
+
+  @page {
+    margin: 0;
+  }
+  
+  .thermal-receipt {
+    display: none;
+  }
+}
+
+/* Specific for thermal printers */
+@media print and (max-width: 80mm) {
+  body * {
+    visibility: hidden;
+  }
+  .thermal-receipt, .thermal-receipt * {
+    visibility: visible;
+  }
+  .thermal-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 2mm;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    color: black;
+    display: block !important;
+  }
+}

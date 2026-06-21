@@ -58,9 +58,16 @@ async function initDb() {
   try {
     await client.execute("ALTER TABLE order_items ADD COLUMN status TEXT NOT NULL DEFAULT 'open'");
   } catch (e) { /* already exists */ }
+  // NOTE: ALTER TABLE ADD COLUMN with a non-constant default (datetime('now'))
+  // isn't reliably supported here (it silently failed on Turso, leaving the
+  // column missing entirely and breaking every query that referenced it).
+  // Add it as a plain nullable column instead, then backfill.
   try {
-    await client.execute("ALTER TABLE order_items ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))");
+    await client.execute('ALTER TABLE order_items ADD COLUMN created_at TEXT');
   } catch (e) { /* already exists */ }
+  try {
+    await client.execute("UPDATE order_items SET created_at = datetime('now') WHERE created_at IS NULL");
+  } catch (e) { console.error('Backfill order_items.created_at failed:', e.message); }
 
   // Migration 2: fix orders table (remove old status CHECK constraint) — only
   // relevant for DBs created before schema-sqlite.sql was fixed; harmless no-op

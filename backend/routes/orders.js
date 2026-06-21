@@ -38,8 +38,12 @@ router.post('/', async (req, res) => {
     // (walk-in/parcel paid on the spot, nothing to track in the kitchen).
     const itemStatus = isBilled ? 'served' : 'open';
     for (const it of items) {
+      // created_at set explicitly here (not relying on a column default —
+      // ALTER TABLE ADD COLUMN with a non-constant default isn't reliable
+      // on every SQLite-compatible backend, so don't depend on it for
+      // correctness on rows inserted after a migration).
       await conn.query(
-        'INSERT INTO order_items (order_id,menu_item_id,item_name,price,qty,line_total,status) VALUES (?,?,?,?,?,?,?)',
+        "INSERT INTO order_items (order_id,menu_item_id,item_name,price,qty,line_total,status,created_at) VALUES (?,?,?,?,?,?,?,datetime('now'))",
         [orderId, it.menu_item_id||null, it.name, it.price, it.qty, it.price*it.qty, itemStatus]
       );
     }
@@ -93,7 +97,7 @@ router.post('/:id/items', async (req, res) => {
     const addedAmount = items.reduce((sum, it) => sum + it.price * it.qty, 0);
     for (const it of items) {
       await conn.query(
-        "INSERT INTO order_items (order_id,menu_item_id,item_name,price,qty,line_total,status) VALUES (?,?,?,?,?,?,'open')",
+        "INSERT INTO order_items (order_id,menu_item_id,item_name,price,qty,line_total,status,created_at) VALUES (?,?,?,?,?,?,'open',datetime('now'))",
         [order.id, it.menu_item_id||null, it.name, it.price, it.qty, it.price*it.qty]
       );
     }

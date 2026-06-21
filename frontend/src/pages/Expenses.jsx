@@ -11,7 +11,7 @@ function rupee(n) {
 const CATEGORIES = ['Raw material', 'Staff', 'Bijli/Paani', 'Gas', 'Maintenance', 'Other'];
 
 export default function Expenses() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -22,6 +22,10 @@ export default function Expenses() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Editing state — when set, the form above is reused in "edit" mode
+  // instead of "add new" mode.
+  const [editingId, setEditingId] = useState(null);
+
   function load() {
     api.get('/expenses')
       .then(({ data }) => setList(data))
@@ -30,19 +34,45 @@ export default function Expenses() {
 
   useEffect(load, []);
 
-  async function addExpense() {
+  function resetForm() {
+    setCategory(CATEGORIES[0]); setAmount(''); setNote(''); setMode('cash');
+    setEditingId(null); setShowForm(false); setError('');
+  }
+
+  function startEdit(e) {
+    setEditingId(e.id);
+    setCategory(e.category);
+    setAmount(String(e.amount));
+    setNote(e.note || '');
+    setMode(e.mode || 'cash');
+    setShowForm(true);
+    setError('');
+  }
+
+  async function saveExpense() {
     if (!amount || Number(amount) <= 0) { setError(t('error_amount')); return; }
     setError('');
     setSubmitting(true);
     try {
-      await api.post('/expenses', { category, amount: Number(amount), note, mode });
-      setAmount(''); setNote(''); setMode('cash'); setShowForm(false);
+      if (editingId) {
+        await api.put(`/expenses/${editingId}`, { category, amount: Number(amount), note, mode });
+      } else {
+        await api.post('/expenses', { category, amount: Number(amount), note, mode });
+      }
+      resetForm();
       load();
     } catch (err) {
       setError(err.response?.data?.error || t('error_save'));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function deleteExpense(id) {
+    const msg = lang === 'hi' ? 'Yeh expense delete karein?' : 'Delete this expense?';
+    if (!window.confirm(msg)) return;
+    await api.delete(`/expenses/${id}`);
+    load();
   }
 
   const total = list.reduce((s, e) => s + Number(e.amount), 0);
@@ -73,6 +103,11 @@ export default function Expenses() {
           </button>
         ) : (
           <div className="bg-white rounded-xl border border-ledger-red/15 p-3.5 mb-4 space-y-2.5">
+            {editingId && (
+              <p className="text-xs font-semibold text-ledger-red uppercase tracking-wide">
+                {lang === 'hi' ? 'Expense Edit Karein' : 'Editing Expense'}
+              </p>
+            )}
             <select value={category} onChange={(e) => setCategory(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-ledger-red/20 text-sm bg-white">
               {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
@@ -101,9 +136,9 @@ export default function Expenses() {
 
             {error && <p className="text-ledger-rust text-xs">{error}</p>}
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setShowForm(false)}
+              <button onClick={resetForm}
                 className="py-2 rounded-lg border border-ledger-ink/20 text-sm">{t('cancel')}</button>
-              <button onClick={addExpense} disabled={submitting}
+              <button onClick={saveExpense} disabled={submitting}
                 className="py-2 rounded-lg bg-ledger-red text-white text-sm font-medium disabled:opacity-60">
                 {submitting ? '...' : t('save')}
               </button>
@@ -118,17 +153,29 @@ export default function Expenses() {
 
         <div className="space-y-2">
           {list.map((e) => (
-            <div key={e.id} className="bg-white rounded-xl border border-ledger-red/15 p-3 flex justify-between items-center">
-              <div>
-                <p className="text-sm font-medium">{e.category}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                    e.mode === 'upi' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-700'
-                  }`}>{e.mode?.toUpperCase()}</span>
-                  {e.note && <p className="text-xs text-ledger-inkSoft">{e.note}</p>}
+            <div key={e.id} className="bg-white rounded-xl border border-ledger-red/15 p-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium">{e.category}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                      e.mode === 'upi' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-700'
+                    }`}>{e.mode?.toUpperCase()}</span>
+                    {e.note && <p className="text-xs text-ledger-inkSoft">{e.note}</p>}
+                  </div>
                 </div>
+                <span className="figure text-sm font-medium">{rupee(e.amount)}</span>
               </div>
-              <span className="figure text-sm font-medium">{rupee(e.amount)}</span>
+              <div className="flex gap-2 mt-2.5">
+                <button onClick={() => startEdit(e)}
+                  className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-ledger-red/30 text-ledger-red">
+                  {lang === 'hi' ? '✎ Edit Karein' : '✎ Edit'}
+                </button>
+                <button onClick={() => deleteExpense(e.id)}
+                  className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-red-300 text-red-500">
+                  {lang === 'hi' ? '🗑 Hatayein' : '🗑 Delete'}
+                </button>
+              </div>
             </div>
           ))}
         </div>

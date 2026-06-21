@@ -26,6 +26,17 @@ router.post('/', async (req, res) => {
   res.json({ id: result.insertId });
 });
 
+router.put('/:id', async (req, res) => {
+  const { category, amount, note, mode } = req.body;
+  if (!category || !amount) return res.status(400).json({ error: 'Category and amount are required' });
+  const [result] = await pool.query(
+    'UPDATE expenses SET category=?, amount=?, note=?, mode=? WHERE id=? AND restaurant_id=?',
+    [category, amount, note || null, mode || 'cash', req.params.id, req.restaurant_id]
+  );
+  if (!result.affectedRows) return res.status(404).json({ error: 'Expense not found' });
+  res.json({ ok: true });
+});
+
 router.delete('/:id', async (req, res) => {
   await pool.query('DELETE FROM expenses WHERE id = ? AND restaurant_id = ?', [req.params.id, req.restaurant_id]);
   res.json({ ok: true });

@@ -52,6 +52,16 @@ async function initDb() {
     await client.execute("ALTER TABLE expenses ADD COLUMN mode TEXT NOT NULL DEFAULT 'cash'");
   } catch (e) { /* already exists */ }
 
+  // Migration 1b: per-item kitchen status + timestamp on order_items (older
+  // DBs only) — lets staff see "Roti ×1 Served" vs a newly added "Roti ×2"
+  // that still needs Accept, instead of one merged item list per order.
+  try {
+    await client.execute("ALTER TABLE order_items ADD COLUMN status TEXT NOT NULL DEFAULT 'open'");
+  } catch (e) { /* already exists */ }
+  try {
+    await client.execute("ALTER TABLE order_items ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))");
+  } catch (e) { /* already exists */ }
+
   // Migration 2: fix orders table (remove old status CHECK constraint) — only
   // relevant for DBs created before schema-sqlite.sql was fixed; harmless no-op
   // on a fresh Turso database.

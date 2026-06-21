@@ -33,10 +33,14 @@ router.post('/', async (req, res) => {
     );
     const orderId = orderResult.insertId;
 
+    // Items on a brand-new order start at whatever the order itself starts
+    // at — 'open' normally, or 'served' if this order was billed instantly
+    // (walk-in/parcel paid on the spot, nothing to track in the kitchen).
+    const itemStatus = isBilled ? 'served' : 'open';
     for (const it of items) {
       await conn.query(
-        'INSERT INTO order_items (order_id,menu_item_id,item_name,price,qty,line_total) VALUES (?,?,?,?,?,?)',
-        [orderId, it.menu_item_id||null, it.name, it.price, it.qty, it.price*it.qty]
+        'INSERT INTO order_items (order_id,menu_item_id,item_name,price,qty,line_total,status) VALUES (?,?,?,?,?,?,?)',
+        [orderId, it.menu_item_id||null, it.name, it.price, it.qty, it.price*it.qty, itemStatus]
       );
     }
     if (payment) {
@@ -62,9 +66,12 @@ router.post('/', async (req, res) => {
 });
 
 // ---- Add items to an existing open/preparing/ready order ----
-// (preparing/ready orders get bumped back to "open" so the kitchen sees a
-// fresh "Accept" prompt for the new round, instead of the new items quietly
-// riding along on an order that's already marked ready/being prepared)
+// New items always start at item-status "open" (need a fresh Accept), even
+// if the rest of the order's items are already preparing/ready/served. The
+// order's overall status gets bumped back to "open" too so the kitchen
+// notices a new round needs attention — but earlier items keep whatever
+// item-level status they already reached (existing "served" items don't
+// get un-served just because someone ordered more food).
 router.post('/:id/items', async (req, res) => {
   const { items } = req.body;
   if (!Array.isArray(items) || items.length === 0) {
@@ -86,7 +93,7 @@ router.post('/:id/items', async (req, res) => {
     const addedAmount = items.reduce((sum, it) => sum + it.price * it.qty, 0);
     for (const it of items) {
       await conn.query(
-        'INSERT INTO order_items (order_id,menu_item_id,item_name,price,qty,line_total) VALUES (?,?,?,?,?,?)',
+        "INSERT INTO order_items (order_id,menu_item_id,item_name,price,qty,line_total,status) VALUES (?,?,?,?,?,?,'open')",
         [order.id, it.menu_item_id||null, it.name, it.price, it.qty, it.price*it.qty]
       );
     }
@@ -119,21 +126,24 @@ router.get('/', async (req, res) => {
       [req.restaurant_id, date]
     );
 
-    // Kitchen/waiter need to see WHAT to cook/serve, not just the bill total —
-    // attach each order's items. Fetched in ONE query (not one-per-order):
-    // a one-query-per-order loop meant a single transient failure could take
-    // down the whole list with no error shown.
+    // Kitchen/waiter need to see WHAT to cook/serve — and at what stage each
+    // item-batch is — not just the bill total. Fetched in ONE query (not
+    // one-per-order): a one-query-per-order loop meant a single transient
+    // failure could take down the whole list with no error shown.
     if (rows.length > 0) {
       const ids = rows.map((r) => r.id);
       const placeholders = ids.map(() => '?').join(',');
       const [allItems] = await pool.query(
-        `SELECT order_id, item_name, qty FROM order_items WHERE order_id IN (${placeholders})`,
+        `SELECT order_id, item_name, qty, status, created_at FROM order_items
+         WHERE order_id IN (${placeholders}) ORDER BY created_at ASC`,
         ids
       );
       const itemsByOrder = {};
       allItems.forEach((it) => {
         if (!itemsByOrder[it.order_id]) itemsByOrder[it.order_id] = [];
-        itemsByOrder[it.order_id].push({ item_name: it.item_name, qty: it.qty });
+        itemsByOrder[it.order_id].push({
+          item_name: it.item_name, qty: it.qty, status: it.status, created_at: it.created_at,
+        });
       });
       rows.forEach((o) => { o.items = itemsByOrder[o.id] || []; });
     }
@@ -152,11 +162,18 @@ router.get('/:id', async (req, res) => {
     [req.params.id, req.restaurant_id]
   );
   if (!orderRows.length) return res.status(404).json({ error: 'Order not found' });
-  const [items] = await pool.query('SELECT * FROM order_items WHERE order_id=?', [req.params.id]);
+  const [items] = await pool.query(
+    'SELECT * FROM order_items WHERE order_id=? ORDER BY created_at ASC',
+    [req.params.id]
+  );
   res.json({ ...orderRows[0], items });
 });
 
 // ---- Update kitchen status ----
+// Cascades to item-level status too: Accept advances "open" items to
+// "preparing", Mark Ready advances "preparing" items to "ready". Items that
+// already moved further (e.g. already "served" from an earlier round) are
+// left alone — only items still sitting at the previous stage move.
 router.put('/:id/status', async (req, res) => {
   const { status } = req.body;
   if (!['preparing','ready'].includes(status)) {
@@ -167,11 +184,31 @@ router.put('/:id/status', async (req, res) => {
     [req.params.id, req.restaurant_id]
   );
   if (!rows.length) return res.status(404).json({ error: 'Order not found' });
+
+  const fromItemStatus = status === 'preparing' ? 'open' : 'preparing';
+  await pool.query(
+    "UPDATE order_items SET status=? WHERE order_id=? AND status=?",
+    [status, req.params.id, fromItemStatus]
+  );
   await pool.query(
     'UPDATE orders SET status=? WHERE id=? AND restaurant_id=?',
     [status, req.params.id, req.restaurant_id]
   );
   res.json({ ok: true, status });
+});
+
+// ---- Mark ready items as served (waiter action) ----
+router.put('/:id/serve', async (req, res) => {
+  const [rows] = await pool.query(
+    'SELECT id FROM orders WHERE id=? AND restaurant_id=?',
+    [req.params.id, req.restaurant_id]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Order not found' });
+  await pool.query(
+    "UPDATE order_items SET status='served' WHERE order_id=? AND status='ready'",
+    [req.params.id]
+  );
+  res.json({ ok: true });
 });
 
 // ---- Record payment ----

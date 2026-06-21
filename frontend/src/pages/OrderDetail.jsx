@@ -58,6 +58,13 @@ const STATUS_STYLE = {
   cancelled:  { bg: 'bg-red-50',    text: 'text-red-400',    border: 'border-red-200'   },
 };
 
+const ITEM_STATUS_COLOR = {
+  open: 'text-amber-600',
+  preparing: 'text-blue-600',
+  ready: 'text-green-600',
+  served: 'text-ledger-inkSoft',
+};
+
 export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -87,8 +94,15 @@ export default function OrderDetail() {
   }
 
   async function updateStatus(status) {
-    await api.put(`/orders/${id}/status`, { status });
-    load();
+    setSubmitting(true);
+    try { await api.put(`/orders/${id}/status`, { status }); load(); }
+    finally { setSubmitting(false); }
+  }
+
+  async function markServed() {
+    setSubmitting(true);
+    try { await api.put(`/orders/${id}/serve`); load(); }
+    finally { setSubmitting(false); }
   }
 
   function printBill() {
@@ -105,6 +119,13 @@ export default function OrderDetail() {
     cancelled: lang === 'hi' ? 'Cancel' : 'Cancelled',
   };
 
+  const ITEM_STATUS_LABEL = {
+    open: lang === 'hi' ? 'Naya' : 'New',
+    preparing: lang === 'hi' ? 'Ban Raha Hai' : 'Preparing',
+    ready: lang === 'hi' ? 'Ready' : 'Ready',
+    served: lang === 'hi' ? 'Served' : 'Served',
+  };
+
   const s = STATUS_STYLE[order.status] || STATUS_STYLE.open;
   const canBill = (user?.role === 'owner' || user?.role === 'cashier') &&
                   (order.status === 'ready' || (order.status === 'open' && user?.role === 'owner'));
@@ -113,6 +134,14 @@ export default function OrderDetail() {
   // current round "ready" (servers should just tell the kitchen there's
   // a new round; the backend bumps status back to "preparing" for that).
   const canAddItems = ['open','preparing','ready'].includes(order.status);
+
+  // Kitchen actions are driven by item-level status, not just the order's
+  // overall status — so already-served items stay "Served" even while a
+  // newly added batch on the same order still needs Accept.
+  const items = order.items || [];
+  const hasOpen = items.some((it) => it.status === 'open');
+  const hasPreparing = items.some((it) => it.status === 'preparing');
+  const hasReady = items.some((it) => it.status === 'ready');
 
   return (
     <div className="min-h-screen ledger-bg pb-10">
@@ -127,6 +156,33 @@ export default function OrderDetail() {
             <span className="text-xs text-gray-500">{order.customer_name}</span>
           )}
         </div>
+
+        {/* Kitchen status — per item, with timestamp. Not shown once billed
+            (the Bill/Receipt card below covers that case). */}
+        {!['billed','cancelled'].includes(order.status) && items.length > 0 && (
+          <div className="print-hidden card p-4">
+            <p className="font-bold text-sm text-ledger-ink mb-2.5">
+              👨‍🍳 {lang === 'hi' ? 'Kitchen Status' : 'Kitchen Status'}
+            </p>
+            <div className="space-y-1.5">
+              {items.map((it) => (
+                <div key={it.id} className="flex items-center justify-between text-sm">
+                  <span className="text-ledger-ink/80">{it.qty}× {it.item_name}</span>
+                  <span className="flex items-center gap-2 shrink-0">
+                    <span className={`text-xs font-semibold ${ITEM_STATUS_COLOR[it.status] || 'text-ledger-inkSoft'}`}>
+                      {ITEM_STATUS_LABEL[it.status] || it.status}
+                    </span>
+                    {it.created_at && (
+                      <span className="text-xs text-ledger-inkSoft">
+                        {parseServerDate(it.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Itemized Bill Card */}
         <div className="card p-4">
@@ -207,7 +263,7 @@ export default function OrderDetail() {
             : (lang === 'hi' ? 'Bill Preview Print Karo' : 'Print Bill Preview')}
         </button>
 
-        {/* Add Items button — open/preparing orders */}
+        {/* Add Items button — open/preparing/ready orders */}
         {canAddItems && (
           <Link to={`/orders/${id}/add-items`}
             className="print-hidden flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-ledger-red text-ledger-red font-semibold text-sm">
@@ -215,27 +271,27 @@ export default function OrderDetail() {
           </Link>
         )}
 
-        {/* Kitchen workflow */}
-        {order.status === 'open' && (
+        {/* Kitchen workflow — driven by item-level status so a partially
+            served order still surfaces the right next action */}
+        {hasOpen && (
           <button onClick={() => updateStatus('preparing')} disabled={submitting}
             className="print-hidden w-full py-3 rounded-xl bg-blue-600 text-white font-semibold shadow">
             👨‍🍳 {lang === 'hi' ? 'Accept — Banana Shuru Karo' : 'Accept — Start Preparing'}
           </button>
         )}
 
-        {order.status === 'preparing' && (
+        {hasPreparing && (
           <button onClick={() => updateStatus('ready')} disabled={submitting}
             className="print-hidden w-full py-3 rounded-xl bg-green-600 text-white font-semibold shadow">
             ✓ {lang === 'hi' ? 'Ready Hai — Serve Karo' : 'Mark as Ready'}
           </button>
         )}
 
-        {order.status === 'ready' && user?.role === 'waiter' && (
-          <div className="print-hidden card p-4 text-center border border-green-200">
-            <p className="text-green-700 font-semibold text-sm">
-              🛎 {lang === 'hi' ? 'Order ready hai — customer ko serve karein!' : 'Ready — serve to customer!'}
-            </p>
-          </div>
+        {hasReady && user?.role === 'waiter' && (
+          <button onClick={markServed} disabled={submitting}
+            className="print-hidden w-full py-3 rounded-xl bg-green-100 text-green-700 font-semibold">
+            🛎 {lang === 'hi' ? 'Serve Ho Gaya — Mark Karein' : 'Mark as Served'}
+          </button>
         )}
 
         {/* Billing */}

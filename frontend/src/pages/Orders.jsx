@@ -18,6 +18,13 @@ const STATUS_COLOR = {
   cancelled:  'bg-red-50 text-red-400 border-red-200',
 };
 
+const ITEM_STATUS_COLOR = {
+  open: 'text-amber-600',
+  preparing: 'text-blue-600',
+  ready: 'text-green-600',
+  served: 'text-ledger-inkSoft',
+};
+
 export default function Orders() {
   const { t, lang } = useLang();
   const { user } = useAuth();
@@ -49,12 +56,25 @@ export default function Orders() {
     load();
   }
 
+  async function markServed(id, e) {
+    e.preventDefault(); e.stopPropagation();
+    await api.put(`/orders/${id}/serve`);
+    load();
+  }
+
   const STATUS_LABEL = {
     open:      lang === 'hi' ? 'Naya' : 'New',
     preparing: lang === 'hi' ? 'Ban Raha Hai' : 'Preparing',
     ready:     lang === 'hi' ? '✓ Ready' : '✓ Ready',
     billed:    lang === 'hi' ? 'Bill Ho Gaya' : 'Billed',
     cancelled: lang === 'hi' ? 'Cancel' : 'Cancelled',
+  };
+
+  const ITEM_STATUS_LABEL = {
+    open: lang === 'hi' ? 'Naya' : 'New',
+    preparing: lang === 'hi' ? 'Ban Raha Hai' : 'Preparing',
+    ready: lang === 'hi' ? 'Ready' : 'Ready',
+    served: lang === 'hi' ? 'Served' : 'Served',
   };
 
   // Separate active vs done orders
@@ -81,7 +101,13 @@ export default function Orders() {
         {/* Active orders */}
         {active.length > 0 && (
           <div className="space-y-2.5 mb-4">
-            {active.map((o) => (
+            {active.map((o) => {
+              const items = o.items || [];
+              const hasOpen = items.some((it) => it.status === 'open');
+              const hasPreparing = items.some((it) => it.status === 'preparing');
+              const hasReady = items.some((it) => it.status === 'ready');
+
+              return (
               <Link key={o.id} to={`/orders/${o.id}`}
                 className="block bg-white rounded-xl border border-ledger-red/15 p-3.5">
                 <div className="flex items-center justify-between mb-2">
@@ -101,62 +127,65 @@ export default function Orders() {
                   </div>
                 </div>
 
-                {/* Items — kitchen/waiter need to know WHAT to cook/serve,
-                    not just the bill total */}
-                {o.items && o.items.length > 0 && (
-                  <p className="text-xs text-ledger-ink/80 mb-2 leading-snug">
-                    {o.items.map((it) => `${it.qty}× ${it.item_name}`).join(', ')}
-                  </p>
+                {/* Per-item status + timestamp — kitchen/waiter need to know
+                    WHAT to cook/serve and which batch is at which stage, not
+                    just one merged bill total. A newly added "Roti ×2" stays
+                    visibly distinct from an already-"Served" "Roti ×1". */}
+                {items.length > 0 && (
+                  <div className="mb-2.5 space-y-1 border-b border-dashed border-gray-200 pb-2">
+                    {items.map((it, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-xs">
+                        <span className="text-ledger-ink/80">{it.qty}× {it.item_name}</span>
+                        <span className="flex items-center gap-1.5 shrink-0">
+                          <span className={`font-semibold ${ITEM_STATUS_COLOR[it.status] || 'text-ledger-inkSoft'}`}>
+                            {ITEM_STATUS_LABEL[it.status] || it.status}
+                          </span>
+                          {it.created_at && (
+                            <span className="text-ledger-inkSoft">
+                              {parseServerDate(it.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
 
-                {/* Kitchen action buttons */}
-                <div className="flex gap-2" onClick={e => e.preventDefault()}>
-                  {o.status === 'open' && (
-                    <>
+                {/* Kitchen action buttons — driven by what's actually pending
+                    at the item level, not just the order's overall status */}
+                <div className="flex gap-2 flex-wrap" onClick={e => e.preventDefault()}>
+                  {hasOpen && (
                     <button onClick={(e) => updateStatus(o.id, 'preparing', e)}
                       className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-blue-500 text-white">
                       {lang === 'hi' ? '👨‍🍳 Accept' : '👨‍🍳 Accept'}
                     </button>
-                    <Link to={`/orders/${o.id}/add-items`} onClick={e => e.stopPropagation()}
-                      className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-ledger-red text-ledger-red text-center">
-                      {lang === 'hi' ? '＋ Items Joṛo' : '＋ Add Items'}
-                    </Link>
-                    </>
                   )}
-                  {o.status === 'preparing' && (
-                    <>
+                  {hasPreparing && (
                     <button onClick={(e) => updateStatus(o.id, 'ready', e)}
                       className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-green-500 text-white">
                       {lang === 'hi' ? '✓ Ready Hai' : '✓ Mark Ready'}
                     </button>
-                    <Link to={`/orders/${o.id}/add-items`} onClick={e => e.stopPropagation()}
-                      className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-ledger-red text-ledger-red text-center">
-                      {lang === 'hi' ? '＋ Items Joṛo' : '＋ Add Items'}
-                    </Link>
-                    </>
                   )}
-                  {o.status === 'ready' && (
-                    <>
-                    <Link to={`/orders/${o.id}/add-items`} onClick={e => e.stopPropagation()}
-                      className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-ledger-red text-ledger-red text-center">
-                      {lang === 'hi' ? '＋ Items Joṛo' : '＋ Add Items'}
-                    </Link>
-                    {(user?.role === 'owner' || user?.role === 'cashier') && (
-                      <Link to={`/orders/${o.id}`} onClick={e => e.stopPropagation()}
-                        className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-ledger-red text-white text-center">
-                        {lang === 'hi' ? '💳 Bill Banao' : '💳 Create Bill'}
-                      </Link>
-                    )}
-                    {user?.role === 'waiter' && (
-                      <span className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-green-100 text-green-700 text-center">
-                        {lang === 'hi' ? '🛎 Serve Karein' : '🛎 Serve to customer'}
-                      </span>
-                    )}
-                    </>
+                  {hasReady && user?.role === 'waiter' && (
+                    <button onClick={(e) => markServed(o.id, e)}
+                      className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-green-100 text-green-700">
+                      {lang === 'hi' ? '🛎 Serve Ho Gaya' : '🛎 Mark Served'}
+                    </button>
                   )}
+                  {hasReady && (user?.role === 'owner' || user?.role === 'cashier') && (
+                    <Link to={`/orders/${o.id}`} onClick={e => e.stopPropagation()}
+                      className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-ledger-red text-white text-center">
+                      {lang === 'hi' ? '💳 Bill Banao' : '💳 Create Bill'}
+                    </Link>
+                  )}
+                  <Link to={`/orders/${o.id}/add-items`} onClick={e => e.stopPropagation()}
+                    className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-ledger-red text-ledger-red text-center">
+                    {lang === 'hi' ? '＋ Items Joṛo' : '＋ Add Items'}
+                  </Link>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         )}
 

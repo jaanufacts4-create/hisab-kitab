@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS order_items (
   price         REAL NOT NULL,
   qty           INTEGER NOT NULL DEFAULT 1,
   line_total    REAL NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'open',
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
   FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE SET NULL
 );

@@ -149,11 +149,20 @@ export default function Dashboard() {
                     )}
                   </div>
                 </div>
+                {/* Expenses are deducted from whichever mode they were paid
+                    in — cash expense reduces cash in hand, UPI expense
+                    reduces the UPI balance. */}
                 <Row
                   label={t('cash_in_hand')}
                   value={rupee(summary.net_cash_in_hand)}
                   bold
                   negative={summary.net_cash_in_hand < 0}
+                />
+                <Row
+                  label={t('upi') + ' (Net)'}
+                  value={rupee(summary.net_upi_balance)}
+                  bold
+                  negative={summary.net_upi_balance < 0}
                 />
               </div>
             </div>

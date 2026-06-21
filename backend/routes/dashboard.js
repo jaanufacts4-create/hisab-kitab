@@ -43,7 +43,9 @@ router.get('/summary', requireRole('owner'), async (req, res) => {
   );
 
   const cash_total = salesRows[0].cash_total;
+  const upi_total = salesRows[0].upi_total;
   const cash_expenses = expenseRows[0].cash_expenses;
+  const upi_expenses = expenseRows[0].upi_expenses;
 
   res.json({
     date,
@@ -51,7 +53,10 @@ router.get('/summary', requireRole('owner'), async (req, res) => {
     ...expenseRows[0],
     ...khataRows[0],
     ...openOrdersRows[0],
+    // Expenses get deducted from whichever mode they were actually paid in —
+    // a cash expense reduces cash in hand, a UPI expense reduces UPI balance.
     net_cash_in_hand: cash_total - cash_expenses,
+    net_upi_balance: upi_total - upi_expenses,
   });
 });
 

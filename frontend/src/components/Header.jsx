@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 
 export default function Header({ title }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { lang, toggle } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
@@ -15,6 +15,17 @@ export default function Header({ title }) {
   const today = new Date().toLocaleDateString('en-IN', {
     weekday: 'short', day: 'numeric', month: 'short',
   });
+
+  // Logout needs to be reachable from every page for every role — staff
+  // (waiter/cashier) had no way to log out before, which meant the owner
+  // couldn't log in on the same shared device without clearing the app.
+  function handleLogout() {
+    const msg = lang === 'hi' ? 'Logout karna hai?' : 'Log out?';
+    if (window.confirm(msg)) {
+      logout();
+      navigate('/login', { replace: true });
+    }
+  }
 
   return (
     <header style={{background:'linear-gradient(135deg,#B91C1C 0%,#7F1D1D 100%)'}}
@@ -37,6 +48,7 @@ export default function Header({ title }) {
         <div>
           <p className="text-[11px] uppercase tracking-widest text-red-200 font-medium">
             {user?.restaurantName || 'Hisab Kitab'}
+            {user?.staffName ? ` · ${user.staffName}` : ''}
           </p>
           <h1 className="font-display text-2xl font-bold leading-tight mt-0.5">{title}</h1>
         </div>
@@ -47,9 +59,17 @@ export default function Header({ title }) {
           >
             {lang === 'hi' ? 'EN' : 'हि'}
           </button>
-          <span className="text-[11px] text-red-200 font-medium">{today}</span>
+          <button
+            onClick={handleLogout}
+            aria-label="Logout"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white text-sm"
+            title={lang === 'hi' ? 'Logout' : 'Logout'}
+          >
+            &#9211;
+          </button>
         </div>
       </div>
+      <p className="text-[11px] text-red-200 font-medium text-right mt-1">{today}</p>
     </header>
   );
 }

@@ -62,7 +62,9 @@ router.post('/', async (req, res) => {
 });
 
 // ---- Add items to an existing open/preparing/ready order ----
-// (ready orders get bumped back to "preparing" since the new items aren't cooked yet)
+// (preparing/ready orders get bumped back to "open" so the kitchen sees a
+// fresh "Accept" prompt for the new round, instead of the new items quietly
+// riding along on an order that's already marked ready/being prepared)
 router.post('/:id/items', async (req, res) => {
   const { items } = req.body;
   if (!Array.isArray(items) || items.length === 0) {
@@ -88,10 +90,12 @@ router.post('/:id/items', async (req, res) => {
         [order.id, it.menu_item_id||null, it.name, it.price, it.qty, it.price*it.qty]
       );
     }
-    // If the order was already "ready" (served), the new items still need
-    // kitchen prep — send it back to "preparing" instead of leaving it
-    // marked ready when half the table's food hasn't even been cooked yet.
-    const newStatus = order.status === 'ready' ? 'preparing' : order.status;
+    // If the kitchen had already accepted (preparing) or finished (ready)
+    // this order, adding more items needs to surface a fresh "Accept" step —
+    // otherwise staff just see the bill total change with no clear signal
+    // that new items need to be cooked. Only a still-"open" order (not yet
+    // accepted at all) is left as-is.
+    const newStatus = ['preparing', 'ready'].includes(order.status) ? 'open' : order.status;
     await conn.query(
       'UPDATE orders SET subtotal=subtotal+?,total=total+?,status=? WHERE id=?',
       [addedAmount, addedAmount, newStatus, order.id]

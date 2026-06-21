@@ -94,14 +94,20 @@ export default function OrderDetail() {
   }
 
   async function updateStatus(status) {
-    setSubmitting(true);
+    setSubmitting(true); setError('');
     try { await api.put(`/orders/${id}/status`, { status }); load(); }
+    catch (err) { setError(err.response?.data?.error || 'Could not update status'); }
     finally { setSubmitting(false); }
   }
 
+  // IMPORTANT: never let this fail silently — without a .catch() here, a
+  // failed request leaves the screen showing stale "Ready" with no
+  // indication anything went wrong, which is exactly the "stuck" symptom
+  // that's confusing to debug from a bug report alone.
   async function markServed() {
-    setSubmitting(true);
+    setSubmitting(true); setError('');
     try { await api.put(`/orders/${id}/serve`); load(); }
+    catch (err) { setError(err.response?.data?.error || 'Could not mark as served'); }
     finally { setSubmitting(false); }
   }
 
@@ -156,6 +162,15 @@ export default function OrderDetail() {
             <span className="text-xs text-gray-500">{order.customer_name}</span>
           )}
         </div>
+
+        {/* Always-visible error banner — Accept/Mark Ready/Mark Served can
+            all fail (network blip, stale data, etc.) and previously failed
+            silently, leaving the screen looking "stuck" with no clue why. */}
+        {error && (
+          <div className="print-hidden bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+            <p className="text-red-600 text-sm">⚠ {error}</p>
+          </div>
+        )}
 
         {/* Kitchen status — per item, with timestamp. Not shown once billed
             (the Bill/Receipt card below covers that case). */}
@@ -300,7 +315,6 @@ export default function OrderDetail() {
             <p className="font-bold text-sm mb-3 text-ledger-ink">
               💳 {lang === 'hi' ? 'Payment Method Chunein' : 'Select Payment Method'}
             </p>
-            {error && <p className="text-red-600 text-xs mb-2">{error}</p>}
             <div className="grid grid-cols-3 gap-2">
               <button onClick={() => pay('cash')} disabled={submitting}
                 className="py-3 rounded-xl bg-ledger-sage text-white font-bold text-sm shadow disabled:opacity-60">

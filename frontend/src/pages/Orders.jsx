@@ -92,16 +92,27 @@ export default function Orders() {
     return () => clearInterval(interval);
   }, []);
 
+  // Same rule as the order-detail page: never swallow a failure here — a
+  // silently-failed tap looks exactly like a "stuck" status to the person
+  // tapping it, with nothing telling them it didn't actually work.
   async function updateStatus(id, status, e) {
     e.preventDefault(); e.stopPropagation();
-    await api.put(`/orders/${id}/status`, { status });
-    load();
+    try {
+      await api.put(`/orders/${id}/status`, { status });
+      load();
+    } catch (err) {
+      setError(err.response?.data?.error || (lang === 'hi' ? 'Status update nahi hua' : 'Could not update status'));
+    }
   }
 
   async function markServed(id, e) {
     e.preventDefault(); e.stopPropagation();
-    await api.put(`/orders/${id}/serve`);
-    load();
+    try {
+      await api.put(`/orders/${id}/serve`);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.error || (lang === 'hi' ? 'Serve mark nahi hua' : 'Could not mark as served'));
+    }
   }
 
   const STATUS_LABEL = {

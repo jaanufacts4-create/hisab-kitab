@@ -91,6 +91,14 @@ export default function Orders() {
                   </div>
                 </div>
 
+                {/* Items — kitchen/waiter need to know WHAT to cook/serve,
+                    not just the bill total */}
+                {o.items && o.items.length > 0 && (
+                  <p className="text-xs text-ledger-ink/80 mb-2 leading-snug">
+                    {o.items.map((it) => `${it.qty}× ${it.item_name}`).join(', ')}
+                  </p>
+                )}
+
                 {/* Kitchen action buttons */}
                 <div className="flex gap-2" onClick={e => e.preventDefault()}>
                   {o.status === 'open' && (

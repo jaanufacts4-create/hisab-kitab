@@ -164,6 +164,17 @@ export default function Dashboard() {
                   bold
                   negative={summary.net_upi_balance < 0}
                 />
+
+                <div className="border-t-2 border-ledger-red/20 mt-1 pt-2.5 flex items-center justify-between">
+                  <span className="text-sm font-bold text-ledger-ink">
+                    Total Net in Hand
+                  </span>
+                  <span className={`font-display text-xl font-bold figure ${
+                    summary.net_total_in_hand < 0 ? 'text-ledger-rust' : 'text-ledger-red'
+                  }`}>
+                    {rupee(summary.net_total_in_hand)}
+                  </span>
+                </div>
               </div>
             </div>
 

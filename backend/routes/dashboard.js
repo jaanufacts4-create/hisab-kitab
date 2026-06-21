@@ -57,6 +57,10 @@ router.get('/summary', requireRole('owner'), async (req, res) => {
     // a cash expense reduces cash in hand, a UPI expense reduces UPI balance.
     net_cash_in_hand: cash_total - cash_expenses,
     net_upi_balance: upi_total - upi_expenses,
+    // Combined bottom line: cash + UPI actually received today, minus all
+    // expenses paid out of either. Credit/khata sales are excluded since
+    // that money hasn't actually been collected yet.
+    net_total_in_hand: (cash_total + upi_total) - (cash_expenses + upi_expenses),
   });
 });
 

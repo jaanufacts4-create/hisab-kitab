@@ -117,6 +117,16 @@ router.get('/', async (req, res) => {
      FROM orders WHERE restaurant_id=? AND DATE(created_at, '${IST_SHIFT}')=? ORDER BY created_at DESC`,
     [req.restaurant_id, date]
   );
+  // Kitchen/waiter need to see WHAT to cook/serve, not just the bill total —
+  // attach each order's items. List is small (a day's orders), so a query
+  // per order is fine.
+  for (const order of rows) {
+    const [items] = await pool.query(
+      'SELECT item_name, qty FROM order_items WHERE order_id=?',
+      [order.id]
+    );
+    order.items = items;
+  }
   res.json(rows);
 });
 

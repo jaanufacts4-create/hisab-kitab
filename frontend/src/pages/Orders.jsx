@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import Header from '../components/Header';
@@ -7,6 +7,7 @@ import StampBadge from '../components/StampBadge';
 import { useLang } from '../context/LangContext';
 import { useAuth } from '../context/AuthContext';
 import { parseServerDate } from '../utils/date';
+import { playNewOrderTone, playReadyTone } from '../utils/sound';
 
 function rupee(n) { return `₹${Number(n || 0).toLocaleString('en-IN')}`; }
 
@@ -32,21 +33,62 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Snapshot of the previous poll's orders (keyed by id), used purely to
+  // detect what changed since last time so we know when to play a
+  // notification tone. Stays null until the first successful load so
+  // opening the page doesn't beep for orders that were already there.
+  const prevOrdersRef = useRef(null);
+
   // IMPORTANT: always handle the failure case — without a .catch() here, a
   // failed request silently leaves `orders` empty and looks exactly like
   // "no orders today" even though the data is fine on the server.
   function load() {
     api.get('/orders')
-      .then(({ data }) => { setOrders(data); setError(''); })
+      .then(({ data }) => {
+        if (prevOrdersRef.current) {
+          const prevById = prevOrdersRef.current;
+          const isStaff = user?.role === 'waiter' || user?.role === 'cashier';
+          const isOwner = user?.role === 'owner';
+
+          // A brand-new order appeared since the last poll — alert staff
+          // (kitchen/waiter) so they notice it without staring at the screen.
+          if (isStaff) {
+            const hasNewOrder = data.some((o) => !prevById[o.id]);
+            if (hasNewOrder) playNewOrderTone();
+          }
+
+          // An order that had no "ready" items before now has one — alert
+          // the owner that something needs billing/serving.
+          if (isOwner) {
+            const justBecameReady = data.some((o) => {
+              const prev = prevById[o.id];
+              if (!prev) return false;
+              const prevReady = (prev.items || []).some((it) => it.status === 'ready');
+              const nowReady = (o.items || []).some((it) => it.status === 'ready');
+              return !prevReady && nowReady;
+            });
+            if (justBecameReady) playReadyTone();
+          }
+        }
+
+        const snapshot = {};
+        data.forEach((o) => { snapshot[o.id] = o; });
+        prevOrdersRef.current = snapshot;
+
+        setOrders(data);
+        setError('');
+      })
       .catch((err) => setError(err.response?.data?.error || (lang === 'hi' ? 'Orders load nahi hue' : 'Could not load orders')))
       .finally(() => setLoading(false));
   }
 
   useEffect(() => { load(); }, []);
 
-  // Auto-refresh every 15 sec for live kitchen updates
+  // Auto-refresh for live kitchen updates — 5s gives a much snappier
+  // cross-device sync than the old 15s without meaningfully increasing
+  // load for a single restaurant's traffic.
   useEffect(() => {
-    const interval = setInterval(load, 15000);
+    const interval = setInterval(load, 5000);
     return () => clearInterval(interval);
   }, []);
 

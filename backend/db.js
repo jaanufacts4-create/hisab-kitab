@@ -36,7 +36,16 @@ function toPlainRows(result) {
 // ---- One-time schema + migrations, run lazily on first use ----
 let readyPromise = null;
 function ensureReady() {
-  if (!readyPromise) readyPromise = initDb();
+  // If initDb() ever rejects (e.g. a transient Turso/network blip during a
+  // cold start), don't cache the rejection forever — that would silently
+  // fail every single request on this process until Render restarts it.
+  // Clearing the cache lets the next call retry from scratch.
+  if (!readyPromise) {
+    readyPromise = initDb().catch((err) => {
+      readyPromise = null;
+      throw err;
+    });
+  }
   return readyPromise;
 }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import Header from '../components/Header';
 import BottomNav from '../components/BottomNav';
@@ -9,14 +10,10 @@ const TIERS = [
   {
     key: 'trial',
     name: 'Trial',
-    tagline: 'Apna register digital karna shuru karein',
+    tagline: 'Time-limited — poora Pro version try karein',
     features: [
-      'Orders banayein aur manage karein',
-      'Aaj ka Hisab (Dashboard)',
-      'Khata (customer credit)',
-      'Kharcha (expenses) tracking',
-      'Menu management',
-      'Sirf Owner login',
+      'Pure Pro features, ek limited samay ke liye',
+      'Trial khatam hone ke baad upgrade karna padega',
     ],
   },
   {
@@ -24,7 +21,7 @@ const TIERS = [
     name: 'Basic',
     tagline: 'Poori team ke saath chalayein',
     features: [
-      'Trial mein jo kuch hai, woh sab',
+      'Orders, Dashboard, Khata, Kharcha, Menu',
       'Cashier aur Waiter staff add karein (PIN login)',
       'Trends & Analytics — sales/order patterns',
       'Bill print / receipt printing',
@@ -43,7 +40,7 @@ const TIERS = [
 ];
 
 export default function Plans() {
-  const { user, plan, refreshPlan } = useAuth();
+  const { plan, rawPlan, daysLeft, isAdmin, refreshPlan } = useAuth();
   const { lang } = useLang();
   const [switching, setSwitching] = useState(null);
   const [error, setError] = useState('');
@@ -60,17 +57,31 @@ export default function Plans() {
 
   return (
     <div className="min-h-screen ledger-bg pb-24">
-      <Header title={lang === 'hi' ? 'Plans' : 'Plans'} />
+      <Header title="Plans" />
       <div className="px-4 mt-4 space-y-4">
-        <p className="text-xs text-ledger-inkSoft text-center">
-          {lang === 'hi'
-            ? 'Abhi ke liye yahan se plan switch kar sakte ho demo dene ke liye — real billing baad mein jud jayegi.'
-            : 'You can switch plans here for now to demo each tier — real billing will be wired up later.'}
-        </p>
+
+        {plan === 'expired' && (
+          <div className="card p-4 border-2 border-red-300 bg-red-50">
+            <p className="text-sm font-bold text-red-600">Trial Khatam Ho Gaya</p>
+            <p className="text-xs text-red-500 mt-1">Continue karne ke liye plan upgrade karein — humse contact karein.</p>
+          </div>
+        )}
+        {rawPlan === 'trial' && plan !== 'expired' && daysLeft != null && (
+          <p className="text-center text-sm font-semibold text-ledger-red">
+            Trial: {daysLeft} din baki hain (Pro features active)
+          </p>
+        )}
+
+        {isAdmin && (
+          <Link to="/admin" className="block text-center text-xs text-ledger-red underline">
+            → Admin Panel (Manage all clients)
+          </Link>
+        )}
+
         {error && <p className="text-center text-red-600 text-sm">{error}</p>}
 
         {TIERS.map((tier) => {
-          const isCurrent = plan === tier.key;
+          const isCurrent = rawPlan === tier.key;
           return (
             <div key={tier.key}
               className={`card p-4 ${isCurrent ? 'border-2 border-ledger-red' : ''}`}>
@@ -78,7 +89,7 @@ export default function Plans() {
                 <p className="font-display text-xl font-bold text-ledger-ink">{tier.name}</p>
                 {isCurrent && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-ledger-red text-white">
-                    {lang === 'hi' ? 'Current Plan' : 'Current Plan'}
+                    Current Plan
                   </span>
                 )}
               </div>
@@ -91,15 +102,23 @@ export default function Plans() {
                   </li>
                 ))}
               </ul>
-              {user?.role === 'owner' && !isCurrent && (
+              {/* Self-serve plan switching is admin-only now — real clients
+                  get provisioned/upgraded by the admin, not themselves. */}
+              {isAdmin && !isCurrent && (
                 <button onClick={() => switchTo(tier.key)} disabled={switching === tier.key}
                   className="w-full py-2.5 rounded-lg bg-ledger-red text-white text-sm font-semibold disabled:opacity-60">
-                  {switching === tier.key ? '...' : (lang === 'hi' ? `${tier.name} Try Karein (Demo)` : `Try ${tier.name} (Demo)`)}
+                  {switching === tier.key ? '...' : `Try ${tier.name} (Demo)`}
                 </button>
               )}
             </div>
           );
         })}
+
+        {!isAdmin && (
+          <p className="text-center text-xs text-ledger-inkSoft">
+            Plan upgrade karne ke liye humse contact karein.
+          </p>
+        )}
       </div>
       <BottomNav />
     </div>

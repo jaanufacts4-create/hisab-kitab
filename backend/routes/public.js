@@ -1,19 +1,21 @@
 const express = require('express');
 const pool = require('../db');
+const { getEffectivePlan } = require('../utils/plan');
 
 const router = express.Router();
 // NOTE: deliberately NO authMiddleware here — this router serves the
 // customer-facing, no-login QR ordering flow. Every route below must
-// independently look up the restaurant by qr_token and verify plan='pro'
-// before doing anything, since there's no staff JWT to trust.
+// independently look up the restaurant by qr_token and verify its
+// EFFECTIVE plan (accounts for trial expiry) before doing anything, since
+// there's no staff JWT to trust.
 
 async function getProRestaurantByToken(qrToken) {
   const [rows] = await pool.query(
-    "SELECT id, name, plan FROM restaurants WHERE qr_token = ? AND is_active = 1",
+    "SELECT id, name, plan, plan_expiry FROM restaurants WHERE qr_token = ? AND is_active = 1",
     [qrToken]
   );
   if (!rows.length) return null;
-  if (rows[0].plan !== 'pro') return null; // self-order is Premium-only
+  if (getEffectivePlan(rows[0]) !== 'pro') return null; // self-order needs Pro (or an active trial)
   return rows[0];
 }
 

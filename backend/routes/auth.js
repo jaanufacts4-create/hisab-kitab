@@ -6,6 +6,16 @@ const { JWT_SECRET } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Phone number(s) (comma-separated) that get Super Admin access — set
+// ADMIN_PHONE in backend/.env to your own restaurant account's phone.
+const ADMIN_PHONES = (process.env.ADMIN_PHONE || '').split(',').map((p) => p.trim()).filter(Boolean);
+
+// Self-service registrations default to a short trial instead of an
+// unlimited one — the open /register page shouldn't be a backdoor to
+// permanent free Pro access. Real clients should be set up by the admin
+// (with whatever trial length was actually agreed) via the Admin panel.
+const DEFAULT_SELF_SIGNUP_TRIAL_DAYS = 7;
+
 // ---- Owner signup: creates a new restaurant tenant ----
 router.post('/register', async (req, res) => {
   try {
@@ -18,16 +28,18 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'This phone number is already registered' });
     }
     const password_hash = await bcrypt.hash(password, 10);
+    const expiry = new Date(Date.now() + DEFAULT_SELF_SIGNUP_TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
     const [result] = await pool.query(
-      'INSERT INTO restaurants (name, owner_name, phone, password_hash) VALUES (?, ?, ?, ?)',
-      [restaurant_name, owner_name, phone, password_hash]
+      'INSERT INTO restaurants (name, owner_name, phone, password_hash, plan, plan_expiry) VALUES (?, ?, ?, ?, ?, ?)',
+      [restaurant_name, owner_name, phone, password_hash, 'trial', expiry]
     );
+    const is_admin = ADMIN_PHONES.includes(phone);
     const token = jwt.sign(
-      { restaurant_id: result.insertId, staff_id: null, role: 'owner' },
+      { restaurant_id: result.insertId, staff_id: null, role: 'owner', is_admin },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
-    res.json({ token, restaurant: { id: result.insertId, name: restaurant_name } });
+    res.json({ token, restaurant: { id: result.insertId, name: restaurant_name }, is_admin });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not create account, please try again' });
@@ -45,12 +57,13 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, restaurant.password_hash);
     if (!valid) return res.status(401).json({ error: 'Phone number or password is incorrect' });
 
+    const is_admin = ADMIN_PHONES.includes(phone);
     const token = jwt.sign(
-      { restaurant_id: restaurant.id, staff_id: null, role: 'owner' },
+      { restaurant_id: restaurant.id, staff_id: null, role: 'owner', is_admin },
       JWT_SECRET,
       { expiresIn: '30d' }
     );
-    res.json({ token, restaurant: { id: restaurant.id, name: restaurant.name } });
+    res.json({ token, restaurant: { id: restaurant.id, name: restaurant.name }, is_admin });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login failed, please try again' });

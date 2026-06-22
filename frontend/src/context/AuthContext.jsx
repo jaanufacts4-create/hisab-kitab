@@ -3,7 +3,7 @@ import api from '../api';
 
 const AuthContext = createContext(null);
 
-// Decode JWT payload without verification (for reading role client-side)
+// Decode JWT payload without verification (for reading role/is_admin client-side)
 function decodeJwt(token) {
   try { return JSON.parse(atob(token.split('.')[1])); } catch { return {}; }
 }
@@ -25,17 +25,26 @@ export function AuthProvider({ children }) {
     return stored;
   });
 
-  // Plan (trial/basic/pro) drives feature gating across the app (Trends,
-  // multi-staff, bill print, QR self-order). Fetched fresh from the server
-  // rather than trusted from the JWT, since it can change anytime via the
-  // demo plan-switcher without anyone logging in again.
+  // `plan` is the EFFECTIVE plan (accounts for trial expiry) — what all
+  // feature gating in the UI should check. `rawPlan`/`daysLeft`/`isAdmin`
+  // are for display only (e.g. "Trial: 5 days left", showing the Admin
+  // Panel link). All fetched fresh from the server, not trusted from the
+  // JWT, since plan can change anytime via the admin panel.
   const [plan, setPlan] = useState(null);
+  const [rawPlan, setRawPlan] = useState(null);
+  const [daysLeft, setDaysLeft] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   function refreshPlan() {
-    if (!user) { setPlan(null); return; }
+    if (!user) { setPlan(null); setRawPlan(null); setDaysLeft(null); setIsAdmin(false); return; }
     api.get('/restaurant/me')
-      .then(({ data }) => setPlan(data.plan))
-      .catch(() => { /* leave plan as-is; gated routes still enforce server-side */ });
+      .then(({ data }) => {
+        setPlan(data.plan);
+        setRawPlan(data.raw_plan);
+        setDaysLeft(data.days_left);
+        setIsAdmin(!!data.is_admin);
+      })
+      .catch(() => { /* leave as-is; gated routes still enforce server-side */ });
   }
 
   useEffect(refreshPlan, [user]);
@@ -51,10 +60,16 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('hisab_user');
     setUser(null);
     setPlan(null);
+    setRawPlan(null);
+    setDaysLeft(null);
+    setIsAdmin(false);
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoggedIn: !!user, plan, refreshPlan }}>
+    <AuthContext.Provider value={{
+      user, login, logout, isLoggedIn: !!user,
+      plan, rawPlan, daysLeft, isAdmin, refreshPlan,
+    }}>
       {children}
     </AuthContext.Provider>
   );

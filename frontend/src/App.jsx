@@ -14,12 +14,30 @@ import Staff from './pages/Staff';
 import AddItems from './pages/AddItems';
 import Analytics from './pages/Analytics';
 import Plans from './pages/Plans';
+import Admin from './pages/Admin';
 import PublicMenu from './pages/PublicMenu';
 import PublicOrderStatus from './pages/PublicOrderStatus';
 
-function ProtectedRoute({ children }) {
-  const { isLoggedIn } = useAuth();
+function ExpiredScreen() {
+  const { logout } = useAuth();
+  return (
+    <div className="min-h-screen ledger-bg flex flex-col items-center justify-center px-6 text-center">
+      <p className="text-2xl font-bold text-ledger-red mb-2">Trial Khatam Ho Gaya</p>
+      <p className="text-sm text-ledger-inkSoft mb-6">
+        Aapka trial period khatam ho gaya hai. Continue karne ke liye plan upgrade karna hoga — humse contact karein.
+      </p>
+      <button onClick={logout} className="text-sm text-ledger-red font-semibold underline">Logout</button>
+    </div>
+  );
+}
+
+// `allowExpired` lets a couple of pages (Plans, so they can see what to
+// upgrade to) stay reachable even after the trial has expired — everything
+// else behind ProtectedRoute gets fully locked out.
+function ProtectedRoute({ children, allowExpired = false }) {
+  const { isLoggedIn, plan } = useAuth();
   if (!isLoggedIn) return <Navigate to="/login" replace />;
+  if (plan === 'expired' && !allowExpired) return <ExpiredScreen />;
   return children;
 }
 
@@ -38,7 +56,8 @@ function AppRoutes() {
       <Route path="/menu" element={<ProtectedRoute><Menu /></ProtectedRoute>} />
       <Route path="/staff" element={<ProtectedRoute><Staff /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-      <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
+      <Route path="/plans" element={<ProtectedRoute allowExpired><Plans /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute allowExpired><Admin /></ProtectedRoute>} />
 
       {/* Customer-facing QR self-order — deliberately NOT behind
           ProtectedRoute, no staff login involved. Gated server-side per

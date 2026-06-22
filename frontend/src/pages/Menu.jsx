@@ -109,8 +109,9 @@ export default function Menu() {
   );
 }
 
-// ---- Customer self-order QR codes — Premium (Pro plan) feature ----
+// ---- Customer self-order QR codes — Premium (Pro plan, or active trial) feature ----
 function TableQRSection({ lang }) {
+  const { isAdmin, refreshPlan } = useAuth();
   const [plan, setPlan] = useState(null);
   const [qrToken, setQrToken] = useState(null);
   const [tableCount, setTableCount] = useState(8);
@@ -132,6 +133,7 @@ function TableQRSection({ lang }) {
     try {
       await api.put('/restaurant/plan', { plan: 'pro' });
       loadPlan();
+      refreshPlan();
     } catch (err) {
       setError(err.response?.data?.error || 'Plan badal nahi paya');
     } finally { setSwitching(false); }
@@ -174,10 +176,12 @@ function TableQRSection({ lang }) {
               : 'Customers can scan a QR at their table and order themselves. Included in the Pro plan.'}
           </p>
           {error && <p className="text-red-600 text-xs mb-2">{error}</p>}
-          <button onClick={enableProDemo} disabled={switching}
-            className="w-full py-2.5 rounded-lg bg-ledger-red text-white text-sm font-semibold disabled:opacity-60 mb-2">
-            {switching ? '...' : (lang === 'hi' ? 'Demo ke liye Pro try karein' : 'Try Pro for demo')}
-          </button>
+          {isAdmin && (
+            <button onClick={enableProDemo} disabled={switching}
+              className="w-full py-2.5 rounded-lg bg-ledger-red text-white text-sm font-semibold disabled:opacity-60 mb-2">
+              {switching ? '...' : (lang === 'hi' ? 'Demo ke liye Pro try karein' : 'Try Pro for demo')}
+            </button>
+          )}
           <Link to="/plans" className="block text-center text-xs text-ledger-inkSoft underline">
             {lang === 'hi' ? 'Saare Plans Dekhein' : 'View All Plans'}
           </Link>

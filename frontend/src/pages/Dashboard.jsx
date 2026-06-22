@@ -33,7 +33,7 @@ function formatDateLabel(dateStr) {
 
 export default function Dashboard() {
   const { t } = useLang();
-  const { user, plan } = useAuth();
+  const { user, plan, rawPlan, daysLeft, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -188,9 +188,21 @@ export default function Dashboard() {
               &#128202; {['basic', 'pro'].includes(plan) ? 'View Trends & Analytics' : 'Trends & Analytics — Upgrade to Basic'}
             </Link>
 
+            {rawPlan === 'trial' && plan !== 'expired' && daysLeft != null && (
+              <p className="text-center text-xs font-semibold text-ledger-red mt-2">
+                ⏳ Trial: {daysLeft} din baki hain
+              </p>
+            )}
+
             <Link to="/plans" className="block text-center text-xs text-ledger-inkSoft mt-2">
-              {plan ? `Current plan: ${plan.toUpperCase()}` : ''} · View Plans
+              {rawPlan ? `Current plan: ${rawPlan.toUpperCase()}` : ''} · View Plans
             </Link>
+
+            {isAdmin && (
+              <Link to="/admin" className="block text-center text-xs text-ledger-red underline mt-1">
+                Admin Panel
+              </Link>
+            )}
           </>
         )}
       </div>

@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
 const { authMiddleware, requireRole } = require('../middleware/auth');
+const { getEffectivePlan } = require('../utils/plan');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -25,12 +26,15 @@ router.post('/', requireRole('owner'), async (req, res) => {
     if (!name || !pin) return res.status(400).json({ error: 'Name and PIN are required' });
     if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: 'PIN should be 4-6 digits' });
 
-    if (role && role !== 'owner') {
-      const [rRows] = await pool.query('SELECT plan FROM restaurants WHERE id = ?', [req.restaurant_id]);
-      if (!['basic', 'pro'].includes(rRows[0]?.plan)) {
+    if (role && role !== 'owner' && !req.is_admin) {
+      const [rRows] = await pool.query('SELECT plan, plan_expiry FROM restaurants WHERE id = ?', [req.restaurant_id]);
+      const effective = rRows[0] ? getEffectivePlan(rRows[0]) : null;
+      if (!['basic', 'pro'].includes(effective)) {
         return res.status(403).json({
-          error: 'Adding staff (cashier/waiter) needs the Basic or Pro plan',
-          plan: rRows[0]?.plan,
+          error: effective === 'expired'
+            ? 'Your trial has expired — please upgrade to continue'
+            : 'Adding staff (cashier/waiter) needs the Basic or Pro plan',
+          plan: effective,
         });
       }
     }

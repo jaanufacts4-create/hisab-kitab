@@ -43,6 +43,13 @@ export function AuthProvider({ children }) {
         setRawPlan(data.raw_plan);
         setDaysLeft(data.days_left);
         setIsAdmin(!!data.is_admin);
+        // Keep the restaurant name shown in the Header in sync — e.g. after
+        // the admin renames a restaurant, without needing a re-login.
+        if (data.name && data.name !== user.restaurantName) {
+          const updated = { ...user, restaurantName: data.name };
+          localStorage.setItem('hisab_user', JSON.stringify(updated));
+          setUser(updated);
+        }
       })
       .catch(() => { /* leave as-is; gated routes still enforce server-side */ });
   }

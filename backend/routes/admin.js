@@ -51,12 +51,20 @@ router.post('/restaurants', async (req, res) => {
   }
 });
 
-// ---- Update a restaurant's plan / trial expiry / active status / amount due ----
+// ---- Update a restaurant's name / plan / trial expiry / active status / amount due ----
 router.put('/restaurants/:id', async (req, res) => {
-  const { plan, trial_days, is_active, due_amount } = req.body;
+  const { name, owner_name, plan, trial_days, is_active, due_amount } = req.body;
   const updates = [];
   const args = [];
 
+  if (name !== undefined) {
+    if (!name) return res.status(400).json({ error: 'Name cannot be empty' });
+    updates.push('name = ?'); args.push(name);
+  }
+  if (owner_name !== undefined) {
+    if (!owner_name) return res.status(400).json({ error: 'Owner name cannot be empty' });
+    updates.push('owner_name = ?'); args.push(owner_name);
+  }
   if (plan) {
     if (!['trial', 'basic', 'pro'].includes(plan)) {
       return res.status(400).json({ error: 'Plan must be trial, basic, or pro' });

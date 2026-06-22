@@ -19,7 +19,7 @@ const PLAN_COLOR = {
 };
 
 export default function Admin() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, refreshPlan } = useAuth();
   const navigate = useNavigate();
 
   const [list, setList] = useState([]);
@@ -100,6 +100,14 @@ export default function Admin() {
     load();
   }
 
+  async function editName(id, current) {
+    const name = window.prompt('Restaurant ka naya naam:', current || '');
+    if (!name || name === current) return;
+    await api.put(`/admin/restaurants/${id}`, { name });
+    load();
+    refreshPlan(); // in case this was your own (admin) account — syncs the Header immediately
+  }
+
   async function toggleActive(id, current) {
     await api.put(`/admin/restaurants/${id}`, { is_active: !current });
     load();
@@ -170,7 +178,9 @@ export default function Admin() {
           {list.map((r) => (
             <div key={r.id} className="card p-3.5">
               <div className="flex items-center justify-between mb-1.5">
-                <p className="font-semibold text-sm text-ledger-ink">{r.name}</p>
+                <button onClick={() => editName(r.id, r.name)} className="font-semibold text-sm text-ledger-ink text-left">
+                  {r.name} <span className="text-ledger-inkSoft">✎</span>
+                </button>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PLAN_COLOR[r.effective_plan] || ''}`}>
                   {r.effective_plan?.toUpperCase()}
                 </span>

@@ -69,7 +69,7 @@ export default function OrderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { lang } = useLang();
-  const { user } = useAuth();
+  const { user, plan } = useAuth();
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -268,15 +268,21 @@ export default function OrderDetail() {
           </pre>
         </div>
 
-        {/* Print button — always available, not just after billing, so a
-            waiter/cashier can print a provisional bill for the customer
-            to check before they pay. */}
-        <button onClick={printBill}
-          className="print-hidden flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm">
-          🖨 {order.status === 'billed'
-            ? (lang === 'hi' ? 'Bill Print Karo' : 'Print Bill')
-            : (lang === 'hi' ? 'Bill Preview Print Karo' : 'Print Bill Preview')}
-        </button>
+        {/* Bill printing is a Basic+ plan feature — Trial shows an upgrade
+            prompt instead of a working print button. */}
+        {['basic', 'pro'].includes(plan) ? (
+          <button onClick={printBill}
+            className="print-hidden flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm">
+            🖨 {order.status === 'billed'
+              ? (lang === 'hi' ? 'Bill Print Karo' : 'Print Bill')
+              : (lang === 'hi' ? 'Bill Preview Print Karo' : 'Print Bill Preview')}
+          </button>
+        ) : (
+          <Link to="/plans"
+            className="print-hidden flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-gray-200 text-gray-400 font-semibold text-sm">
+            🖨 {lang === 'hi' ? 'Bill Print — Basic+ Plan' : 'Bill Print — Basic+ Plan'}
+          </Link>
+        )}
 
         {/* Add Items button — open/preparing/ready orders */}
         {canAddItems && (

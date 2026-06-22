@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
 import Header from '../components/Header';
 import BottomNav from '../components/BottomNav';
@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LangContext';
 
 export default function Staff() {
-  const { user } = useAuth();
+  const { user, plan } = useAuth();
   const { lang } = useLang();
   const navigate = useNavigate();
 
@@ -30,6 +30,9 @@ export default function Staff() {
     api.get('/staff').then(({ data }) => setList(data)).finally(() => setLoading(false));
   }
   useEffect(load, []);
+
+  // Multi-staff (cashier/waiter) is Basic+ — Trial is single-owner only.
+  const canAddStaff = ['basic', 'pro'].includes(plan);
 
   async function addStaff() {
     if (!name || !pin) { setError(lang === 'hi' ? 'Naam aur PIN zaroori hai' : 'Name and PIN are required'); return; }
@@ -73,7 +76,21 @@ export default function Staff() {
       <Header title={title} />
       <div className="px-4 mt-4">
 
-        {!showForm ? (
+        {!canAddStaff ? (
+          <div className="card p-4 mb-4">
+            <p className="text-sm font-semibold text-ledger-ink mb-1">
+              ⭐ {lang === 'hi' ? 'Basic+ Plan Feature' : 'Basic+ Plan Feature'}
+            </p>
+            <p className="text-xs text-ledger-inkSoft mb-3">
+              {lang === 'hi'
+                ? 'Trial plan mein sirf owner login chalta hai. Cashier/Waiter add karne ke liye Basic ya Pro plan chahiye.'
+                : 'Trial only supports the owner login. Adding cashier/waiter staff needs the Basic or Pro plan.'}
+            </p>
+            <Link to="/plans" className="block w-full text-center bg-ledger-red text-white font-medium py-2.5 rounded-xl text-sm">
+              {lang === 'hi' ? 'Plans Dekhein' : 'View Plans'}
+            </Link>
+          </div>
+        ) : !showForm ? (
           <button onClick={() => setShowForm(true)}
             className="block w-full text-center bg-ledger-red text-white font-medium py-3 rounded-xl mb-4">
             {addBtn}

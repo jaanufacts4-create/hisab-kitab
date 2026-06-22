@@ -175,9 +175,12 @@ function TableQRSection({ lang }) {
           </p>
           {error && <p className="text-red-600 text-xs mb-2">{error}</p>}
           <button onClick={enableProDemo} disabled={switching}
-            className="w-full py-2.5 rounded-lg bg-ledger-red text-white text-sm font-semibold disabled:opacity-60">
+            className="w-full py-2.5 rounded-lg bg-ledger-red text-white text-sm font-semibold disabled:opacity-60 mb-2">
             {switching ? '...' : (lang === 'hi' ? 'Demo ke liye Pro try karein' : 'Try Pro for demo')}
           </button>
+          <Link to="/plans" className="block text-center text-xs text-ledger-inkSoft underline">
+            {lang === 'hi' ? 'Saare Plans Dekhein' : 'View All Plans'}
+          </Link>
         </div>
       ) : (
         <div className="card p-4">

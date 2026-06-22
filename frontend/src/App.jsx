@@ -13,6 +13,7 @@ import Menu from './pages/Menu';
 import Staff from './pages/Staff';
 import AddItems from './pages/AddItems';
 import Analytics from './pages/Analytics';
+import Plans from './pages/Plans';
 import PublicMenu from './pages/PublicMenu';
 import PublicOrderStatus from './pages/PublicOrderStatus';
 
@@ -37,6 +38,7 @@ function AppRoutes() {
       <Route path="/menu" element={<ProtectedRoute><Menu /></ProtectedRoute>} />
       <Route path="/staff" element={<ProtectedRoute><Staff /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+      <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
 
       {/* Customer-facing QR self-order — deliberately NOT behind
           ProtectedRoute, no staff login involved. Gated server-side per

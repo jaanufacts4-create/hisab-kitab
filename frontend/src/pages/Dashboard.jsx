@@ -33,7 +33,7 @@ function formatDateLabel(dateStr) {
 
 export default function Dashboard() {
   const { t } = useLang();
-  const { user } = useAuth();
+  const { user, plan } = useAuth();
   const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -183,9 +183,13 @@ export default function Dashboard() {
               <MiniCard label={t('open_orders')} value={summary.open_orders} accent="#B91C1C" />
             </div>
 
-            <Link to="/analytics"
+            <Link to={['basic', 'pro'].includes(plan) ? '/analytics' : '/plans'}
               className="flex items-center justify-center gap-2 bg-white rounded-xl border border-ledger-red/15 p-3 text-sm font-medium text-ledger-red shadow-sm mt-3">
-              &#128202; View Trends &amp; Analytics
+              &#128202; {['basic', 'pro'].includes(plan) ? 'View Trends & Analytics' : 'Trends & Analytics — Upgrade to Basic'}
+            </Link>
+
+            <Link to="/plans" className="block text-center text-xs text-ledger-inkSoft mt-2">
+              {plan ? `Current plan: ${plan.toUpperCase()}` : ''} · View Plans
             </Link>
           </>
         )}

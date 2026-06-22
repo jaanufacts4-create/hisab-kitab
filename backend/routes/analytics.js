@@ -1,14 +1,15 @@
 const express = require('express');
 const pool = require('../db');
-const { authMiddleware, requireRole } = require('../middleware/auth');
+const { authMiddleware, requireRole, requirePlan } = require('../middleware/auth');
 const { todayIST, addDaysToDateStr, IST_SHIFT } = require('../utils/date');
 
 const router = express.Router();
 router.use(authMiddleware);
 
-// Trends/Analytics is owner-only — staff (cashier/waiter) PIN logins must not see this.
+// Trends/Analytics is owner-only, and Basic plan or above (Trial doesn't
+// include it) — staff (cashier/waiter) PIN logins must not see this either way.
 // GET /analytics/summary?from=YYYY-MM-DD&to=YYYY-MM-DD
-router.get('/summary', requireRole('owner'), async (req, res) => {
+router.get('/summary', requireRole('owner'), requirePlan('basic', 'pro'), async (req, res) => {
   const to = req.query.to || todayIST();
   const from = req.query.from || addDaysToDateStr(to, -6);
   const rid = req.restaurant_id;

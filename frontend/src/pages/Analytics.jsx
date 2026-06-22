@@ -117,9 +117,31 @@ export default function Analytics() {
     }));
   }
 
+  // Fill missing days for expenses too, using the same server-confirmed
+  // from/to range as filledDaily().
+  function filledDailyExpenses() {
+    if (!data) return [];
+    const map = {};
+    (data.dailyExpenses || []).forEach(d => { map[d.date] = d; });
+    const result = [];
+    const start = new Date(data.from + 'T00:00:00');
+    const end = new Date(data.to + 'T00:00:00');
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const ds = toDateStr(d);
+      const shortLabel = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      const existing = map[ds];
+      result.push(existing
+        ? { ...existing, label: shortLabel }
+        : { date: ds, total: 0, label: shortLabel });
+    }
+    return result;
+  }
+
   const totalRevenue = data?.daily?.reduce((s, d) => s + d.revenue, 0) || 0;
   const totalOrders = data?.daily?.reduce((s, d) => s + d.order_count, 0) || 0;
   const avgOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  const totalExpenses = data?.dailyExpenses?.reduce((s, d) => s + d.total, 0) || 0;
+  const netAmount = totalRevenue - totalExpenses;
 
   return (
     <div className="min-h-screen ledger-bg pb-24">
@@ -192,6 +214,20 @@ export default function Analytics() {
               </div>
             </div>
 
+            {/* Expenses + Net for the same range */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="card p-3 text-center">
+                <p className="text-[10px] text-ledger-inkSoft mb-0.5">Total Expenses</p>
+                <p className="font-bold text-ledger-rust text-sm figure">{rupee(totalExpenses)}</p>
+              </div>
+              <div className="card p-3 text-center">
+                <p className="text-[10px] text-ledger-inkSoft mb-0.5">Net (Revenue − Expenses)</p>
+                <p className={`font-bold text-sm figure ${netAmount < 0 ? 'text-ledger-rust' : 'text-green-600'}`}>
+                  {rupee(netAmount)}
+                </p>
+              </div>
+            </div>
+
             {/* Daily Revenue chart */}
             <div className="card p-4">
               <p className="font-bold text-sm text-ledger-ink mb-1">&#128200; Daily Revenue</p>
@@ -203,6 +239,42 @@ export default function Analytics() {
                 formatVal={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`}
               />
             </div>
+
+            {/* Daily Expenses chart */}
+            <div className="card p-4">
+              <p className="font-bold text-sm text-ledger-ink mb-1">&#128184; Daily Expenses</p>
+              <BarChart
+                data={filledDailyExpenses()}
+                valueKey="total"
+                labelKey="label"
+                color="#EA580C"
+                formatVal={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`}
+              />
+            </div>
+
+            {/* Expenses by category */}
+            {data.expensesByCategory && data.expensesByCategory.length > 0 && (
+              <div className="card p-4">
+                <p className="font-bold text-sm text-ledger-ink mb-3">&#128202; Expenses by Category</p>
+                <div className="space-y-2.5">
+                  {data.expensesByCategory.map((cat) => {
+                    const maxTotal = data.expensesByCategory[0].total;
+                    const pct = maxTotal > 0 ? (cat.total / maxTotal) * 100 : 0;
+                    return (
+                      <div key={cat.category}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-ledger-ink">{cat.category || 'Other'}</span>
+                          <span className="text-xs font-semibold text-ledger-rust figure">{rupee(cat.total)}</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-ledger-rust/70" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Day-of-Week pattern */}
             <div className="card p-4">

@@ -62,7 +62,28 @@ router.get('/summary', requireRole('owner'), requirePlan('basic', 'pro'), async 
       [rid, from, to]
     );
 
-    res.json({ from, to, daily, topItems, dow, payments });
+    // Daily expenses — expense_date is already a plain local-date string
+    // (no timestamp), so no IST_SHIFT needed here.
+    const [dailyExpenses] = await pool.query(
+      `SELECT expense_date AS date, COALESCE(SUM(amount), 0) AS total
+       FROM expenses
+       WHERE restaurant_id=? AND expense_date BETWEEN ? AND ?
+       GROUP BY expense_date
+       ORDER BY date ASC`,
+      [rid, from, to]
+    );
+
+    // Expenses broken down by category
+    const [expensesByCategory] = await pool.query(
+      `SELECT category, COALESCE(SUM(amount), 0) AS total
+       FROM expenses
+       WHERE restaurant_id=? AND expense_date BETWEEN ? AND ?
+       GROUP BY category
+       ORDER BY total DESC`,
+      [rid, from, to]
+    );
+
+    res.json({ from, to, daily, topItems, dow, payments, dailyExpenses, expensesByCategory });
   } catch (err) {
     console.error('Analytics error:', err.message);
     res.status(500).json({ error: err.message });

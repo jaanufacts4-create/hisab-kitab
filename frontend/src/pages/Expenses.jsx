@@ -3,19 +3,10 @@ import api from '../api';
 import Header from '../components/Header';
 import BottomNav from '../components/BottomNav';
 import { useLang } from '../context/LangContext';
+import { useViewDate, toDateStr } from '../context/DateContext';
 
 function rupee(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN')}`;
-}
-
-// Local-date based (see Dashboard.jsx for why toISOString() is wrong here —
-// it converts to UTC first and silently shifts the date in timezones ahead
-// of UTC like IST).
-function toDateStr(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 function formatDateLabel(dateStr) {
@@ -41,7 +32,9 @@ export default function Expenses() {
   const [mode, setMode] = useState('cash');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [date, setDate] = useState(toDateStr(new Date()));
+  // Shared with Dashboard — switching tabs keeps showing the same day
+  // instead of silently resetting to today.
+  const { viewDate: date, setViewDate: setDate } = useViewDate();
 
   // Editing state — when set, the form above is reused in "edit" mode
   // instead of "add new" mode.
@@ -124,8 +117,8 @@ export default function Expenses() {
       <Header title={t('exp_title')} />
       <div className="px-4 mt-4">
 
-        {/* Date navigation bar — same pattern as Dashboard, so expense
-            details for any past day are reachable, not just today's. */}
+        {/* Date navigation bar — same pattern as Dashboard, and now backed
+            by the SAME shared date, so switching tabs doesn't reset it. */}
         <div className="flex items-center justify-between bg-white rounded-xl border border-ledger-red/20 px-3 py-2.5 mb-2 shadow-sm gap-1">
           <button onClick={prevDay} aria-label="Previous day"
             className="w-9 h-9 flex items-center justify-center rounded-lg text-ledger-red font-bold text-lg hover:bg-red-50 transition-colors shrink-0">

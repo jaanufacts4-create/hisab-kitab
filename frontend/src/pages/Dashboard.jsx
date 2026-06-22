@@ -5,20 +5,10 @@ import Header from '../components/Header';
 import BottomNav from '../components/BottomNav';
 import { useLang } from '../context/LangContext';
 import { useAuth } from '../context/AuthContext';
+import { useViewDate, toDateStr } from '../context/DateContext';
 
 function rupee(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN')}`;
-}
-
-// IMPORTANT: build the date string from LOCAL date parts, never via
-// toISOString() — that converts to UTC first and silently shifts the
-// date by a day in timezones ahead of UTC (e.g. IST), which was causing
-// the prev/next arrows to jump by 2 days / not advance at all.
-function toDateStr(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 function formatDateLabel(dateStr) {
@@ -38,7 +28,9 @@ export default function Dashboard() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [date, setDate] = useState(toDateStr(new Date()));
+  // Shared with Expenses (and anywhere else date-scoped) — so switching
+  // tabs keeps showing the same day instead of silently jumping to today.
+  const { viewDate: date, setViewDate: setDate } = useViewDate();
 
   const today = toDateStr(new Date());
   const isToday = date === today;

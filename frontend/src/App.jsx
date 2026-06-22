@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LangProvider } from './context/LangContext';
+import { DateProvider } from './context/DateContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -60,9 +61,11 @@ export default function App() {
   return (
     <LangProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <DateProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </DateProvider>
       </AuthProvider>
     </LangProvider>
   );

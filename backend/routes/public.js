@@ -39,7 +39,7 @@ router.post('/:qrToken/orders', async (req, res) => {
   const restaurant = await getProRestaurantByToken(req.params.qrToken);
   if (!restaurant) return res.status(404).json({ error: 'Ordering not available' });
 
-  const { table_no, items } = req.body;
+  const { table_no, items, customer_name, customer_phone } = req.body;
   if (!table_no) return res.status(400).json({ error: 'Table number is required' });
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Add at least one item to the order' });
@@ -71,8 +71,8 @@ router.post('/:qrToken/orders', async (req, res) => {
     const subtotal = lineItems.reduce((sum, it) => sum + it.price * it.qty, 0);
 
     const [orderResult] = await conn.query(
-      "INSERT INTO orders (restaurant_id,table_no,status,payment_status,subtotal,total,created_by,billed_at) VALUES (?,?,?,?,?,?,?,?)",
-      [restaurant.id, String(table_no), 'open', 'unpaid', subtotal, subtotal, null, null]
+      "INSERT INTO orders (restaurant_id,table_no,customer_name,customer_phone,status,payment_status,subtotal,total,created_by,billed_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+      [restaurant.id, String(table_no), customer_name || null, customer_phone || null, 'open', 'unpaid', subtotal, subtotal, null, null]
     );
     const orderId = orderResult.insertId;
 

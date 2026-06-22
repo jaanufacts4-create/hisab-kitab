@@ -69,6 +69,13 @@ async function initDb() {
     await client.execute("UPDATE order_items SET created_at = datetime('now') WHERE created_at IS NULL");
   } catch (e) { console.error('Backfill order_items.created_at failed:', e.message); }
 
+  // Migration 1c: per-restaurant QR token for customer self-order pages
+  // (older DBs only). Nullable, simple constant default — generated lazily
+  // by GET /api/restaurant/qr the first time an owner asks for their QR.
+  try {
+    await client.execute('ALTER TABLE restaurants ADD COLUMN qr_token TEXT');
+  } catch (e) { /* already exists */ }
+
   // Migration 2: fix orders table (remove old status CHECK constraint) — only
   // relevant for DBs created before schema-sqlite.sql was fixed; harmless no-op
   // on a fresh Turso database.

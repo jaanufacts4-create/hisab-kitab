@@ -14,6 +14,11 @@ app.use('/api/khata', require('./routes/khata'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/restaurant', require('./routes/restaurant'));
+// Customer-facing QR self-order flow — deliberately separate from the routes
+// above: no staff login involved, gated per-restaurant on plan='pro' inside
+// the route handlers themselves (see public.js).
+app.use('/api/public', require('./routes/public'));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

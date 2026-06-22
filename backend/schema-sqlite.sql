@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS restaurants (
   plan          TEXT NOT NULL DEFAULT 'trial' CHECK(plan IN ('trial','basic','pro')),
   plan_expiry   TEXT NULL,
   is_active     INTEGER NOT NULL DEFAULT 1,
+  qr_token      TEXT NULL UNIQUE,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

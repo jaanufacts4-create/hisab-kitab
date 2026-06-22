@@ -147,7 +147,7 @@ function TableQRSection({ lang }) {
       const images = {};
       for (let t = 1; t <= tableCount; t++) {
         const url = `${window.location.origin}/order/${token}/${t}`;
-        images[t] = await QRCode.toDataURL(url, { width: 220, margin: 1 });
+        images[t] = { url, dataUrl: await QRCode.toDataURL(url, { width: 220, margin: 1 }) };
       }
       setQrImages(images);
     } catch (err) {
@@ -195,10 +195,17 @@ function TableQRSection({ lang }) {
 
           {Object.keys(qrImages).length > 0 && (
             <div className="grid grid-cols-2 gap-3">
-              {Object.entries(qrImages).map(([tableNo, src]) => (
+              {Object.entries(qrImages).map(([tableNo, info]) => (
                 <div key={tableNo} className="border border-gray-200 rounded-lg p-2 text-center">
-                  <img src={src} alt={`Table ${tableNo} QR`} className="w-full" />
+                  <img src={info.dataUrl} alt={`Table ${tableNo} QR`} className="w-full" />
                   <p className="text-xs font-semibold mt-1">Table {tableNo}</p>
+                  {/* Plain link for testing on a computer without scanning —
+                      "open image in new tab" only shows the QR picture, not
+                      where it points; this link is the actual destination. */}
+                  <a href={info.url} target="_blank" rel="noopener noreferrer"
+                    className="block text-[10px] text-blue-600 underline mt-1 break-all">
+                    {info.url}
+                  </a>
                 </div>
               ))}
             </div>

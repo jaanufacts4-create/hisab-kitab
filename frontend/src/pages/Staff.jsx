@@ -56,6 +56,7 @@ export default function Staff() {
   const ROLE_LABELS = {
     waiter:  lang === 'hi' ? 'Waiter' : 'Waiter',
     cashier: lang === 'hi' ? 'Cashier' : 'Cashier',
+    kitchen: lang === 'hi' ? 'Kitchen' : 'Kitchen',
     owner:   lang === 'hi' ? 'Malik' : 'Owner',
   };
 
@@ -108,7 +109,7 @@ export default function Staff() {
             <div className="flex items-center gap-2">
               <span className="text-xs text-ledger-inkSoft">{roleLabel}</span>
               <div className="flex gap-1 bg-ledger-paperDark rounded-lg p-1 flex-1">
-                {['waiter', 'cashier'].map((r) => (
+                {['waiter', 'cashier', 'kitchen'].map((r) => (
                   <button key={r} onClick={() => setRole(r)}
                     className={`flex-1 text-xs font-medium py-1 rounded-md transition-colors capitalize ${
                       role === r ? 'bg-ledger-red text-white' : 'text-ledger-inkSoft'

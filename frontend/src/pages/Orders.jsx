@@ -47,7 +47,7 @@ export default function Orders() {
       .then(({ data }) => {
         if (prevOrdersRef.current) {
           const prevById = prevOrdersRef.current;
-          const isStaff = user?.role === 'waiter' || user?.role === 'cashier';
+          const isStaff = ['waiter', 'cashier', 'kitchen'].includes(user?.role);
           const isOwner = user?.role === 'owner';
 
           // A brand-new order appeared since the last poll — alert staff

@@ -11,7 +11,7 @@ export default function BottomNav() {
   // Trends is also Basic+ plan (Trial doesn't include it).
   const ALL_TABS = [
     { to: '/',          label: t('nav_today'),    icon: '◆',  roles: ['owner'] },
-    { to: '/orders',    label: t('nav_orders'),   icon: '🧾', roles: ['owner', 'cashier', 'waiter'] },
+    { to: '/orders',    label: t('nav_orders'),   icon: '🧾', roles: ['owner', 'cashier', 'waiter', 'kitchen'] },
     { to: '/khata',     label: t('nav_khata'),    icon: '📖', roles: ['owner', 'cashier'] },
     { to: '/expenses',  label: t('nav_expenses'), icon: '✎',  roles: ['owner', 'cashier'] },
     { to: '/analytics', label: 'Trends',           icon: '📊', roles: ['owner'], minPlan: ['basic', 'pro'] },

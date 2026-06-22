@@ -135,6 +135,49 @@ async function initDb() {
     console.error('Migration 2 error:', e.message);
   }
 
+  // Migration 3: add 'kitchen' to the staff role CHECK constraint — only
+  // relevant for DBs whose staff table predates the Kitchen role; harmless
+  // no-op on a fresh database.
+  try {
+    const bak = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='_staff_bak'"
+    );
+    if (bak.rows.length) {
+      const staffExists = await client.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='staff'"
+      );
+      if (!staffExists.rows.length) {
+        await client.execute("ALTER TABLE _staff_bak RENAME TO staff");
+      } else {
+        await client.execute("DROP TABLE _staff_bak");
+      }
+    }
+
+    const row = await client.execute(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='staff'"
+    );
+    const staffSql = row.rows[0] ? row.rows[0][0] : null;
+    if (staffSql && !String(staffSql).includes('kitchen')) {
+      await client.execute("ALTER TABLE staff RENAME TO _staff_bak");
+      await client.execute(
+        "CREATE TABLE staff (" +
+        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+        "restaurant_id INTEGER NOT NULL," +
+        "name TEXT NOT NULL," +
+        "phone TEXT," +
+        "pin_hash TEXT NOT NULL," +
+        "role TEXT NOT NULL DEFAULT 'waiter' CHECK(role IN ('owner','cashier','waiter','kitchen'))," +
+        "is_active INTEGER NOT NULL DEFAULT 1," +
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+      );
+      await client.execute("INSERT INTO staff SELECT * FROM _staff_bak");
+      await client.execute("DROP TABLE _staff_bak");
+      console.log('Migration 3: staff table rebuilt with kitchen role');
+    }
+  } catch (e) {
+    console.error('Migration 3 error:', e.message);
+  }
+
   try {
     const tables = await client.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
     console.log('DB tables (Turso):', toPlainRows(tables).map((t) => t.name).join(', '));

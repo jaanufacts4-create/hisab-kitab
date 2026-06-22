@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS staff (
   name          TEXT NOT NULL,
   phone         TEXT NULL,
   pin_hash      TEXT NOT NULL,
-  role          TEXT NOT NULL DEFAULT 'waiter' CHECK(role IN ('owner','cashier','waiter')),
+  role          TEXT NOT NULL DEFAULT 'waiter' CHECK(role IN ('owner','cashier','waiter','kitchen')),
   is_active     INTEGER NOT NULL DEFAULT 1,
   created_at    TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE

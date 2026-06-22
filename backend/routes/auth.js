@@ -3,12 +3,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const { JWT_SECRET } = require('../middleware/auth');
+const { isAdminPhone } = require('../utils/admin');
 
 const router = express.Router();
-
-// Phone number(s) (comma-separated) that get Super Admin access — set
-// ADMIN_PHONE in backend/.env to your own restaurant account's phone.
-const ADMIN_PHONES = (process.env.ADMIN_PHONE || '').split(',').map((p) => p.trim()).filter(Boolean);
 
 // Self-service registrations default to a short trial instead of an
 // unlimited one — the open /register page shouldn't be a backdoor to
@@ -33,7 +30,7 @@ router.post('/register', async (req, res) => {
       'INSERT INTO restaurants (name, owner_name, phone, password_hash, plan, plan_expiry) VALUES (?, ?, ?, ?, ?, ?)',
       [restaurant_name, owner_name, phone, password_hash, 'trial', expiry]
     );
-    const is_admin = ADMIN_PHONES.includes(phone);
+    const is_admin = isAdminPhone(phone);
     const token = jwt.sign(
       { restaurant_id: result.insertId, staff_id: null, role: 'owner', is_admin },
       JWT_SECRET,
@@ -57,7 +54,7 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, restaurant.password_hash);
     if (!valid) return res.status(401).json({ error: 'Phone number or password is incorrect' });
 
-    const is_admin = ADMIN_PHONES.includes(phone);
+    const is_admin = isAdminPhone(phone);
     const token = jwt.sign(
       { restaurant_id: restaurant.id, staff_id: null, role: 'owner', is_admin },
       JWT_SECRET,

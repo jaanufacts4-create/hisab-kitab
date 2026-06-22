@@ -76,6 +76,16 @@ async function initDb() {
     await client.execute('ALTER TABLE restaurants ADD COLUMN qr_token TEXT');
   } catch (e) { /* already exists */ }
 
+  // Migration 1d: admin's UPI ID (for receiving upgrade payments) + the
+  // amount due for a specific client. upi_id only ever gets set on the
+  // admin's own row; due_amount is set per-client by the admin.
+  try {
+    await client.execute('ALTER TABLE restaurants ADD COLUMN upi_id TEXT');
+  } catch (e) { /* already exists */ }
+  try {
+    await client.execute('ALTER TABLE restaurants ADD COLUMN due_amount REAL');
+  } catch (e) { /* already exists */ }
+
   // Migration 2: fix orders table (remove old status CHECK constraint) — only
   // relevant for DBs created before schema-sqlite.sql was fixed; harmless no-op
   // on a fresh Turso database.

@@ -11,7 +11,7 @@ router.use(requireAdmin);
 // ---- List every restaurant (tenant) on the platform ----
 router.get('/restaurants', async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT id, name, owner_name, phone, plan, plan_expiry, is_active, created_at
+    `SELECT id, name, owner_name, phone, plan, plan_expiry, is_active, due_amount, created_at
      FROM restaurants ORDER BY created_at DESC`
   );
   const withStatus = rows.map((r) => ({
@@ -51,9 +51,9 @@ router.post('/restaurants', async (req, res) => {
   }
 });
 
-// ---- Update a restaurant's plan / trial expiry / active status ----
+// ---- Update a restaurant's plan / trial expiry / active status / amount due ----
 router.put('/restaurants/:id', async (req, res) => {
-  const { plan, trial_days, is_active } = req.body;
+  const { plan, trial_days, is_active, due_amount } = req.body;
   const updates = [];
   const args = [];
 
@@ -71,6 +71,11 @@ router.put('/restaurants/:id', async (req, res) => {
   }
   if (is_active !== undefined) {
     updates.push('is_active = ?'); args.push(is_active ? 1 : 0);
+  }
+  // The amount THIS client needs to pay to continue past trial — shown to
+  // them as a UPI payment request once their trial expires.
+  if (due_amount !== undefined) {
+    updates.push('due_amount = ?'); args.push(due_amount === null || due_amount === '' ? null : Number(due_amount));
   }
   if (updates.length === 0) return res.status(400).json({ error: 'Nothing to update' });
 

@@ -25,7 +25,9 @@ export default function Login() {
     try {
       const { data } = await api.post('/auth/login', { phone, password });
       login(data.token, { role: 'owner', restaurantName: data.restaurant.name, restaurantId: data.restaurant.id });
-      navigate('/');
+      // Admin (Prem's own account) lands straight on the Admin Panel
+      // instead of the regular owner Dashboard.
+      navigate(data.is_admin ? '/admin' : '/');
     } catch (err) {
       setError(err.response?.data?.error || t('login_error'));
     } finally { setLoading(false); }

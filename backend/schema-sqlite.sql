@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS restaurants (
   plan_expiry   TEXT NULL,
   is_active     INTEGER NOT NULL DEFAULT 1,
   qr_token      TEXT NULL UNIQUE,
+  upi_id        TEXT NULL,
+  due_amount    REAL NULL,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

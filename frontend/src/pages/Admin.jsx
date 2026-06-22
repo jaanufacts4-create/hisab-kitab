@@ -9,6 +9,8 @@ function fmtDate(s) {
   return new Date(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function rupee(n) { return n == null ? '—' : `₹${Number(n).toLocaleString('en-IN')}`; }
+
 const PLAN_COLOR = {
   trial: 'bg-amber-50 text-amber-700 border-amber-200',
   basic: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -32,6 +34,12 @@ export default function Admin() {
   const [password, setPassword] = useState('');
   const [trialDays, setTrialDays] = useState(15);
 
+  // Your own UPI ID — used to build the payment request clients see once
+  // their trial expires (see /restaurant/payment-info on the backend).
+  const [upiId, setUpiId] = useState('');
+  const [upiSaving, setUpiSaving] = useState(false);
+  const [upiSaved, setUpiSaved] = useState(false);
+
   useEffect(() => {
     if (isAdmin === false) navigate('/');
   }, [isAdmin]);
@@ -40,6 +48,21 @@ export default function Admin() {
     api.get('/admin/restaurants').then(({ data }) => setList(data)).finally(() => setLoading(false));
   }
   useEffect(load, []);
+
+  useEffect(() => {
+    api.get('/restaurant/me').then(({ data }) => { if (data.upi_id) setUpiId(data.upi_id); }).catch(() => {});
+  }, []);
+
+  async function saveUpi() {
+    if (!upiId) return;
+    setUpiSaving(true); setUpiSaved(false);
+    try {
+      await api.put('/restaurant/upi', { upi_id: upiId });
+      setUpiSaved(true);
+    } catch (err) {
+      setError(err.response?.data?.error || 'UPI ID save nahi hua');
+    } finally { setUpiSaving(false); }
+  }
 
   async function createRestaurant() {
     if (!restaurantName || !ownerName || !phone || !password) {
@@ -70,6 +93,13 @@ export default function Admin() {
     load();
   }
 
+  async function setAmount(id, current) {
+    const amount = window.prompt('Upgrade ke liye kitna amount (₹) due hai?', current || '');
+    if (amount === null) return;
+    await api.put(`/admin/restaurants/${id}`, { due_amount: amount === '' ? null : amount });
+    load();
+  }
+
   async function toggleActive(id, current) {
     await api.put(`/admin/restaurants/${id}`, { is_active: !current });
     load();
@@ -81,6 +111,25 @@ export default function Admin() {
     <div className="min-h-screen ledger-bg pb-10">
       <Header title="Admin Panel" />
       <div className="px-4 mt-4 space-y-4">
+
+        {/* Your UPI ID — clients see a payment request to this once their
+            trial expires, for whatever amount you set per client below. */}
+        <div className="card p-4">
+          <p className="text-sm font-semibold text-ledger-ink mb-1">💳 Aapka UPI ID</p>
+          <p className="text-xs text-ledger-inkSoft mb-2.5">
+            Yeh wahi UPI ID hai jahan clients ka payment jayega jab unka trial khatam ho jaye. Kabhi bhi badal sakte ho.
+          </p>
+          <div className="flex gap-2">
+            <input value={upiId} onChange={(e) => { setUpiId(e.target.value); setUpiSaved(false); }}
+              placeholder="yourname@upi"
+              className="flex-1 px-3 py-2 rounded-lg border border-ledger-red/20 text-sm" />
+            <button onClick={saveUpi} disabled={upiSaving}
+              className="px-4 py-2 rounded-lg bg-ledger-red text-white text-sm font-semibold disabled:opacity-60">
+              {upiSaving ? '...' : 'Save'}
+            </button>
+          </div>
+          {upiSaved && <p className="text-green-600 text-xs mt-1.5">✓ Save ho gaya</p>}
+        </div>
 
         {!showForm ? (
           <button onClick={() => setShowForm(true)}
@@ -131,6 +180,7 @@ export default function Admin() {
                 Plan: {r.plan} {r.plan === 'trial' && r.plan_expiry && (
                   r.days_left > 0 ? `(${r.days_left} din baki)` : '(expired)'
                 )}
+                {' · '}Amount due: {rupee(r.due_amount)}
                 {!r.is_active && <span className="text-red-500 font-semibold"> · DISABLED</span>}
               </p>
 
@@ -147,6 +197,10 @@ export default function Admin() {
                 <button onClick={() => extendTrial(r.id)}
                   className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-ledger-inkSoft/30 text-ledger-inkSoft">
                   Set Trial Days
+                </button>
+                <button onClick={() => setAmount(r.id, r.due_amount)}
+                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-ledger-inkSoft/30 text-ledger-inkSoft">
+                  Set Amount
                 </button>
                 <button onClick={() => toggleActive(r.id, r.is_active)}
                   className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border ${

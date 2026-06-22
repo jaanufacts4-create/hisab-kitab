@@ -199,13 +199,6 @@ function TableQRSection({ lang }) {
                 <div key={tableNo} className="border border-gray-200 rounded-lg p-2 text-center">
                   <img src={info.dataUrl} alt={`Table ${tableNo} QR`} className="w-full" />
                   <p className="text-xs font-semibold mt-1">Table {tableNo}</p>
-                  {/* Plain link for testing on a computer without scanning —
-                      "open image in new tab" only shows the QR picture, not
-                      where it points; this link is the actual destination. */}
-                  <a href={info.url} target="_blank" rel="noopener noreferrer"
-                    className="block text-[10px] text-blue-600 underline mt-1 break-all">
-                    {info.url}
-                  </a>
                 </div>
               ))}
             </div>

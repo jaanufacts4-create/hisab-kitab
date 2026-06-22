@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import publicApi from '../publicApi';
 
 function rupee(n) { return `₹${Number(n || 0).toLocaleString('en-IN')}`; }
@@ -9,6 +9,7 @@ function rupee(n) { return `₹${Number(n || 0).toLocaleString('en-IN')}`; }
 // staff UI; this is a deliberately separate, minimal experience.
 export default function PublicMenu() {
   const { qrToken, tableNo } = useParams();
+  const navigate = useNavigate();
   const [restaurantName, setRestaurantName] = useState('');
   const [menu, setMenu] = useState([]);
   const [cart, setCart] = useState({});
@@ -82,8 +83,14 @@ export default function PublicMenu() {
         <p className="text-red-700 font-bold text-xl mb-4">{rupee(placedOrder.total)}</p>
         <p className="text-gray-500 text-sm">Aapka khana jald tayar hoga 🍽️</p>
         <button
+          onClick={() => navigate(`/order/${qrToken}/${tableNo}/status/${placedOrder.id}`)}
+          className="mt-6 w-full max-w-xs py-3 rounded-xl bg-red-700 text-white font-bold text-sm shadow"
+        >
+          Order Status Dekho
+        </button>
+        <button
           onClick={() => setPlacedOrder(null)}
-          className="mt-8 px-6 py-2.5 rounded-xl border-2 border-red-700 text-red-700 font-semibold text-sm"
+          className="mt-3 w-full max-w-xs py-2.5 rounded-xl border-2 border-red-700 text-red-700 font-semibold text-sm"
         >
           Aur Item Add Karein
         </button>

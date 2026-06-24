@@ -17,10 +17,10 @@ function getEffectivePlan(restaurant) {
   return restaurant.plan;
 }
 
-// Days remaining on an active trial, for showing a countdown to the owner.
-// null if not on trial, or no expiry set.
+// Days remaining on the current plan. Works for trial, basic, and pro.
+// Returns null if no expiry is set (unlimited).
 function daysLeft(restaurant) {
-  if (restaurant.plan !== 'trial' || !restaurant.plan_expiry) return null;
+  if (!restaurant.plan_expiry) return null;
   const ms = new Date(restaurant.plan_expiry).getTime() - Date.now();
   return Math.ceil(ms / (24 * 60 * 60 * 1000));
 }

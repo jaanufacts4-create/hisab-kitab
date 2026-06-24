@@ -4,7 +4,7 @@ import { LANG } from '../lang';
 const LangContext = createContext();
 
 export function LangProvider({ children }) {
-  const [lang, setLang] = useState(() => localStorage.getItem('hk_lang') || 'hi');
+  const [lang, setLang] = useState(() => localStorage.getItem('hk_lang') || 'en');
 
   function toggle() {
     const next = lang === 'hi' ? 'en' : 'hi';

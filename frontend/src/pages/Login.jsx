@@ -93,7 +93,7 @@ export default function Login() {
           <h1 className="font-display text-3xl font-semibold text-ledger-red">Hisab Kitab</h1>
           <p className="text-ledger-inkSoft text-sm mt-1">{t('login_sub')}</p>
           <button onClick={toggle} className="mt-2 text-xs font-semibold bg-ledger-red/10 text-ledger-red px-3 py-1 rounded-full">
-            {lang === 'hi' ? 'Switch to English' : 'हिंदी में बदलें'}
+            {lang === 'hi' ? 'Switch to English' : 'हिंदी'}
           </button>
         </div>
 

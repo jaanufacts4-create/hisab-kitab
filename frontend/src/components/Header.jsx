@@ -57,7 +57,7 @@ export default function Header({ title }) {
             onClick={toggle}
             className="text-[11px] font-bold bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full transition-colors"
           >
-            {lang === 'hi' ? 'EN' : 'हि'}
+            {lang === 'hi' ? 'EN' : 'हि'  /* EN=English active, हि=Hinglish active */}
           </button>
           <button
             onClick={handleLogout}

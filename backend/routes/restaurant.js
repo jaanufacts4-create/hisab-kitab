@@ -11,7 +11,7 @@ router.use(authMiddleware);
 // ---- Get this restaurant's plan + QR self-order info ----
 router.get('/me', async (req, res) => {
   const [rows] = await pool.query(
-    'SELECT id, name, plan, plan_expiry, qr_token FROM restaurants WHERE id = ?',
+    'SELECT id, name, plan, plan_expiry, qr_token, upi_id FROM restaurants WHERE id = ?',
     [req.restaurant_id]
   );
   if (!rows.length) return res.status(404).json({ error: 'Restaurant not found' });
@@ -24,6 +24,7 @@ router.get('/me', async (req, res) => {
     plan_expiry: r.plan_expiry,
     days_left: daysLeft(r),
     qr_token: r.qr_token,
+    upi_id: r.upi_id || null,
     is_admin: req.is_admin,
   });
 });

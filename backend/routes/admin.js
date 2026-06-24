@@ -36,8 +36,10 @@ router.post('/restaurants', async (req, res) => {
     if (existing.length) return res.status(409).json({ error: 'This phone number is already registered' });
 
     const password_hash = await bcrypt.hash(password, 10);
-    const plan_expiry = trial_days
-      ? new Date(Date.now() + Number(trial_days) * 24 * 60 * 60 * 1000).toISOString()
+    // trial_days=0 means expire immediately (now), positive = future, omitted = no expiry
+    const td = Number(trial_days);
+    const plan_expiry = (trial_days !== undefined && trial_days !== null && trial_days !== '')
+      ? new Date(Date.now() + td * 24 * 60 * 60 * 1000).toISOString()
       : null;
 
     const [result] = await pool.query(
@@ -72,8 +74,9 @@ router.put('/restaurants/:id', async (req, res) => {
     updates.push('plan = ?'); args.push(plan);
   }
   if (trial_days !== undefined) {
-    const expiry = trial_days
-      ? new Date(Date.now() + Number(trial_days) * 24 * 60 * 60 * 1000).toISOString()
+    const td = Number(trial_days);
+    const expiry = (trial_days !== null && trial_days !== '')
+      ? new Date(Date.now() + td * 24 * 60 * 60 * 1000).toISOString()
       : null;
     updates.push('plan_expiry = ?'); args.push(expiry);
   }

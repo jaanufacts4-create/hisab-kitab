@@ -41,7 +41,7 @@ const TIERS = [
 
 export default function Plans() {
   const { plan, rawPlan, daysLeft, isAdmin, refreshPlan } = useAuth();
-  const { lang } = useLang();
+  const { t } = useLang();
   const [switching, setSwitching] = useState(null);
   const [error, setError] = useState('');
 
@@ -57,24 +57,24 @@ export default function Plans() {
 
   return (
     <div className="min-h-screen ledger-bg pb-24">
-      <Header title="Plans" />
+      <Header title={t('plans_title')} />
       <div className="px-4 mt-4 space-y-4">
 
         {plan === 'expired' && (
           <div className="card p-4 border-2 border-red-300 bg-red-50">
-            <p className="text-sm font-bold text-red-600">Trial Khatam Ho Gaya</p>
-            <p className="text-xs text-red-500 mt-1">Continue karne ke liye plan upgrade karein — humse contact karein.</p>
+            <p className="text-sm font-bold text-red-600">{t('plan_expired_title')}</p>
+            <p className="text-xs text-red-500 mt-1">{t('plan_expired_msg')}</p>
           </div>
         )}
         {rawPlan === 'trial' && plan !== 'expired' && daysLeft != null && (
           <p className="text-center text-sm font-semibold text-ledger-red">
-            Trial: {daysLeft} din baki hain (Pro features active)
+            {t('trial_badge')} {daysLeft} {t('trial_days_left')} ({t('plan_trial_active')})
           </p>
         )}
 
         {isAdmin && (
           <Link to="/admin" className="block text-center text-xs text-ledger-red underline">
-            → Admin Panel (Manage all clients)
+            {t('plan_admin_link')}
           </Link>
         )}
 
@@ -89,7 +89,7 @@ export default function Plans() {
                 <p className="font-display text-xl font-bold text-ledger-ink">{tier.name}</p>
                 {isCurrent && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-ledger-red text-white">
-                    Current Plan
+                    {t('plan_current')}
                   </span>
                 )}
               </div>
@@ -116,7 +116,7 @@ export default function Plans() {
 
         {!isAdmin && (
           <p className="text-center text-xs text-ledger-inkSoft">
-            Plan upgrade karne ke liye humse contact karein.
+            {t('plan_contact')}
           </p>
         )}
       </div>

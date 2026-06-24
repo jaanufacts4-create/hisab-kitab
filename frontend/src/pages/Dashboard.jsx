@@ -98,7 +98,7 @@ export default function Dashboard() {
 
         {!isToday && (
           <button onClick={() => setDate(today)} className="block mx-auto text-xs text-ledger-red font-semibold mb-4">
-            &#8635; Jump to Today
+            {t('jump_today')}
           </button>
         )}
         {isToday && <div className="mb-2" />}
@@ -159,7 +159,7 @@ export default function Dashboard() {
 
                 <div className="border-t-2 border-ledger-red/20 mt-1 pt-2.5 flex items-center justify-between">
                   <span className="text-sm font-bold text-ledger-ink">
-                    Total Net in Hand
+                    {t('net_in_hand')}
                   </span>
                   <span className={`font-display text-xl font-bold figure ${
                     summary.net_total_in_hand < 0 ? 'text-ledger-rust' : 'text-ledger-red'
@@ -177,22 +177,39 @@ export default function Dashboard() {
 
             <Link to={['basic', 'pro'].includes(plan) ? '/analytics' : '/plans'}
               className="flex items-center justify-center gap-2 bg-white rounded-xl border border-ledger-red/15 p-3 text-sm font-medium text-ledger-red shadow-sm mt-3">
-              &#128202; {['basic', 'pro'].includes(plan) ? 'View Trends & Analytics' : 'Trends & Analytics — Upgrade to Basic'}
+              📊 {['basic', 'pro'].includes(plan) ? t('view_analytics') : t('upgrade_analytics')}
             </Link>
 
-            {rawPlan === 'trial' && plan !== 'expired' && daysLeft != null && (
-              <p className="text-center text-xs font-semibold text-ledger-red mt-2">
-                ⏳ Trial: {daysLeft} din baki hain
-              </p>
-            )}
-
-            <Link to="/plans" className="block text-center text-xs text-ledger-inkSoft mt-2">
-              {rawPlan ? `Current plan: ${rawPlan.toUpperCase()}` : ''} · View Plans
+            {/* Plan info card */}
+            <Link to="/plans" className="block bg-white rounded-xl border border-ledger-red/15 px-4 py-3 mt-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] text-ledger-inkSoft uppercase tracking-wide">{t('current_plan')}</p>
+                  <p className="font-bold text-ledger-ink text-sm mt-0.5">
+                    {rawPlan?.toUpperCase() || '—'}
+                    {rawPlan === 'trial' && plan !== 'expired' && (
+                      <span className="ml-2 text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-200">
+                        {t('trial_badge')}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="text-right">
+                  {daysLeft != null && plan !== 'expired' ? (
+                    <p className="text-xs font-semibold text-ledger-red">{daysLeft} {t('trial_days_left')}</p>
+                  ) : plan === 'expired' ? (
+                    <p className="text-xs font-semibold text-red-500">Expired</p>
+                  ) : (
+                    <p className="text-xs text-ledger-inkSoft">{t('plan_no_expiry')}</p>
+                  )}
+                  <p className="text-[10px] text-ledger-red mt-1">{t('view_plans')} →</p>
+                </div>
+              </div>
             </Link>
 
             {isAdmin && (
-              <Link to="/admin" className="block text-center text-xs text-ledger-red underline mt-1">
-                Admin Panel
+              <Link to="/admin" className="block text-center text-xs text-ledger-red underline mt-2">
+                {t('admin_panel')}
               </Link>
             )}
           </>

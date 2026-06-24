@@ -16,24 +16,35 @@ function toDateStr(d) {
 const DOW_LABEL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const PRESETS = [['7', '7D'], ['14', '14D'], ['30', '30D']];
 
-function BarChart({ data, valueKey, labelKey, color, formatVal }) {
+function BarChart({ data, valueKey, labelKey, color, formatVal, showRupee }) {
   if (!data || data.length === 0) return (
     <p className="text-center text-ledger-inkSoft text-sm py-6">No data for this range</p>
   );
   const max = Math.max(...data.map(d => d[valueKey])) || 1;
-  const minBarWidth = 30;
+  const BAR_H = 160; // px — chart area height
+  const MIN_W = 36;
+
   return (
-    <div className="overflow-x-auto mt-2 -mx-1 px-1">
-      <div className="flex items-end gap-1.5 h-32" style={{ minWidth: data.length * minBarWidth }}>
+    <div className="overflow-x-auto mt-3 -mx-1 px-1">
+      <div className="flex items-end gap-1" style={{ minWidth: data.length * MIN_W, height: BAR_H + 36 }}>
         {data.map((d, i) => {
-          const pct = (d[valueKey] / max) * 100;
+          const val = d[valueKey];
+          const barH = Math.max((val / max) * BAR_H, val > 0 ? 6 : 2);
+          const label = formatVal ? formatVal(val) : String(val);
+          const isEmpty = val === 0;
           return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1" style={{ minWidth: minBarWidth - 6 }}>
-              <span className="text-ledger-inkSoft leading-none" style={{ fontSize: '9px' }}>
-                {formatVal ? formatVal(d[valueKey]) : d[valueKey]}
+            <div key={i} className="flex-1 flex flex-col items-center justify-end"
+              style={{ minWidth: MIN_W - 2, height: BAR_H + 36 }}>
+              {/* Value label above bar */}
+              <span className={`text-center font-semibold leading-tight mb-1 ${isEmpty ? 'text-transparent' : 'text-ledger-ink'}`}
+                style={{ fontSize: '10px', minHeight: 14 }}>
+                {showRupee && !isEmpty ? '₹' : ''}{label}
               </span>
-              <div className="w-full rounded-t-sm" style={{ height: `${Math.max(pct, 4)}%`, backgroundColor: color }} />
-              <span className="text-ledger-inkSoft text-center leading-tight" style={{ fontSize: '9px' }}>
+              {/* Bar */}
+              <div className="w-full rounded-t" style={{ height: barH, backgroundColor: isEmpty ? '#E5E7EB' : color }} />
+              {/* Date label below */}
+              <span className="text-ledger-inkSoft text-center leading-tight mt-1.5 break-all"
+                style={{ fontSize: '9px', maxWidth: MIN_W - 2 }}>
                 {d[labelKey]}
               </span>
             </div>
@@ -230,12 +241,13 @@ export default function Analytics() {
 
             {/* Daily Revenue chart */}
             <div className="card p-4">
-              <p className="font-bold text-sm text-ledger-ink mb-1">&#128200; Daily Revenue</p>
+              <p className="font-bold text-sm text-ledger-ink mb-1">📈 Daily Revenue</p>
               <BarChart
                 data={filledDaily()}
                 valueKey="revenue"
                 labelKey="label"
                 color="#B91C1C"
+                showRupee
                 formatVal={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`}
               />
             </div>

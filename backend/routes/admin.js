@@ -92,4 +92,13 @@ router.put('/restaurants/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- Reset a client's owner password ----
+router.put('/restaurants/:id/password', async (req, res) => {
+  const { password } = req.body;
+  if (!password || password.length < 4) return res.status(400).json({ error: 'Password kam se kam 4 characters ka hona chahiye' });
+  const password_hash = await bcrypt.hash(password, 10);
+  await pool.query('UPDATE restaurants SET password_hash = ? WHERE id = ?', [password_hash, req.params.id]);
+  res.json({ ok: true });
+});
+
 module.exports = router;

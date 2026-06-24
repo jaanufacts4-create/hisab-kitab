@@ -107,6 +107,14 @@ export default function Admin() {
     });
   }
 
+  async function resetPassword(id) {
+    const pwd = window.prompt('Naya password set karein (kam se kam 4 characters):');
+    if (!pwd) return;
+    if (pwd.length < 4) { alert('Password kam se kam 4 characters ka hona chahiye'); return; }
+    await api.put(`/admin/restaurants/${id}/password`, { password: pwd });
+    alert('✓ Password reset ho gaya');
+  }
+
   async function saveConfirmPayment() {
     if (!confirmPanel) return;
     const { id, plan, days, amount } = confirmPanel;
@@ -223,6 +231,11 @@ export default function Admin() {
                       : 'border-green-400 text-green-600'
                   }`}>
                   {r.is_active ? '⏸ Disable' : '▶ Enable'}
+                </button>
+                <button
+                  onClick={() => resetPassword(r.id)}
+                  className="px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-gray-300 text-gray-500">
+                  🔑 Password
                 </button>
               </div>
 

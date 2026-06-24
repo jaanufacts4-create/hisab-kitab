@@ -14,9 +14,11 @@ function rupee(n) { return n == null ? '—' : `₹${Number(n).toLocaleString('e
 const PLAN_COLOR = {
   trial: 'bg-amber-50 text-amber-700 border-amber-200',
   basic: 'bg-blue-50 text-blue-700 border-blue-200',
-  pro: 'bg-green-50 text-green-700 border-green-200',
+  pro:   'bg-green-50 text-green-700 border-green-200',
   expired: 'bg-red-50 text-red-600 border-red-200',
 };
+
+const PLAN_DURATION = { trial: 15, basic: 30, pro: 365 };
 
 export default function Admin() {
   const { isAdmin, refreshPlan } = useAuth();
@@ -28,21 +30,22 @@ export default function Admin() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // New restaurant form
   const [restaurantName, setRestaurantName] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [trialDays, setTrialDays] = useState(15);
 
-  // Your own UPI ID — used to build the payment request clients see once
-  // their trial expires (see /restaurant/payment-info on the backend).
+  // UPI ID
   const [upiId, setUpiId] = useState('');
   const [upiSaving, setUpiSaving] = useState(false);
   const [upiSaved, setUpiSaved] = useState(false);
 
-  useEffect(() => {
-    if (isAdmin === false) navigate('/');
-  }, [isAdmin]);
+  // Per-restaurant "Confirm Payment" panel — keyed by restaurant id
+  const [confirmPanel, setConfirmPanel] = useState(null); // { id, plan, days, amount }
+
+  useEffect(() => { if (isAdmin === false) navigate('/'); }, [isAdmin]);
 
   function load() {
     api.get('/admin/restaurants').then(({ data }) => setList(data)).finally(() => setLoading(false));
@@ -81,35 +84,39 @@ export default function Admin() {
     } finally { setSubmitting(false); }
   }
 
-  async function updatePlan(id, plan) {
-    await api.put(`/admin/restaurants/${id}`, { plan });
-    load();
-  }
-
-  async function extendTrial(id) {
-    const days = window.prompt('Kitne din ka trial set karein?', '15');
-    if (!days) return;
-    await api.put(`/admin/restaurants/${id}`, { trial_days: Number(days) });
-    load();
-  }
-
-  async function setAmount(id, current) {
-    const amount = window.prompt('Upgrade ke liye kitna amount (₹) due hai?', current || '');
-    if (amount === null) return;
-    await api.put(`/admin/restaurants/${id}`, { due_amount: amount === '' ? null : amount });
-    load();
-  }
-
   async function editName(id, current) {
     const name = window.prompt('Restaurant ka naya naam:', current || '');
     if (!name || name === current) return;
     await api.put(`/admin/restaurants/${id}`, { name });
     load();
-    refreshPlan(); // in case this was your own (admin) account — syncs the Header immediately
+    refreshPlan();
   }
 
   async function toggleActive(id, current) {
     await api.put(`/admin/restaurants/${id}`, { is_active: !current });
+    load();
+  }
+
+  function openConfirmPanel(r) {
+    const plan = r.effective_plan === 'expired' || !r.effective_plan ? 'basic' : r.plan;
+    setConfirmPanel({
+      id: r.id,
+      plan,
+      days: PLAN_DURATION[plan] ?? 30,
+      amount: r.due_amount ?? '',
+    });
+  }
+
+  async function saveConfirmPayment() {
+    if (!confirmPanel) return;
+    const { id, plan, days, amount } = confirmPanel;
+    await api.put(`/admin/restaurants/${id}`, {
+      plan,
+      trial_days: Number(days),   // reuses trial_days field to set plan_expiry
+      is_active: 1,
+      due_amount: amount === '' ? null : Number(amount),
+    });
+    setConfirmPanel(null);
     load();
   }
 
@@ -120,12 +127,11 @@ export default function Admin() {
       <Header title="Admin Panel" />
       <div className="px-4 mt-4 space-y-4">
 
-        {/* Your UPI ID — clients see a payment request to this once their
-            trial expires, for whatever amount you set per client below. */}
+        {/* UPI ID */}
         <div className="card p-4">
           <p className="text-sm font-semibold text-ledger-ink mb-1">💳 Aapka UPI ID</p>
           <p className="text-xs text-ledger-inkSoft mb-2.5">
-            Yeh wahi UPI ID hai jahan clients ka payment jayega jab unka trial khatam ho jaye. Kabhi bhi badal sakte ho.
+            Clients ko yahi UPI dikhayi dega jab unka trial khatam ho. Amount alag-alag client ke liye "Confirm Payment" mein set karo.
           </p>
           <div className="flex gap-2">
             <input value={upiId} onChange={(e) => { setUpiId(e.target.value); setUpiSaved(false); }}
@@ -139,6 +145,7 @@ export default function Admin() {
           {upiSaved && <p className="text-green-600 text-xs mt-1.5">✓ Save ho gaya</p>}
         </div>
 
+        {/* New client form */}
         {!showForm ? (
           <button onClick={() => setShowForm(true)}
             className="block w-full text-center bg-ledger-red text-white font-medium py-3 rounded-xl">
@@ -158,7 +165,7 @@ export default function Admin() {
               <span className="text-xs text-ledger-inkSoft shrink-0">Trial (din):</span>
               <input type="number" min="0" value={trialDays} onChange={(e) => setTrialDays(e.target.value)}
                 className="w-20 px-2 py-2 rounded-lg border border-ledger-red/20 text-sm figure" />
-              <span className="text-[11px] text-ledger-inkSoft">(0 = unlimited)</span>
+              <span className="text-[11px] text-ledger-inkSoft">(0 = abhi se expired)</span>
             </div>
             {error && <p className="text-red-600 text-xs">{error}</p>}
             <div className="grid grid-cols-2 gap-2">
@@ -174,51 +181,103 @@ export default function Admin() {
 
         {loading && <p className="text-center text-ledger-inkSoft mt-8">Loading...</p>}
 
-        <div className="space-y-2.5">
+        {/* Restaurant list */}
+        <div className="space-y-3">
           {list.map((r) => (
             <div key={r.id} className="card p-3.5">
-              <div className="flex items-center justify-between mb-1.5">
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-1">
                 <button onClick={() => editName(r.id, r.name)} className="font-semibold text-sm text-ledger-ink text-left">
-                  {r.name} <span className="text-ledger-inkSoft">✎</span>
+                  {r.name} <span className="text-ledger-inkSoft text-xs">✎</span>
                 </button>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PLAN_COLOR[r.effective_plan] || ''}`}>
-                  {r.effective_plan?.toUpperCase()}
-                </span>
+                <div className="flex items-center gap-2">
+                  {!r.is_active && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200">DISABLED</span>
+                  )}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${PLAN_COLOR[r.effective_plan] || ''}`}>
+                    {r.effective_plan?.toUpperCase()}
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-ledger-inkSoft mb-1">{r.owner_name} · {r.phone}</p>
-              <p className="text-[11px] text-ledger-inkSoft mb-2.5">
-                Plan: {r.plan} {r.plan === 'trial' && r.plan_expiry && (
-                  r.days_left > 0 ? `(${r.days_left} din baki)` : '(expired)'
-                )}
-                {' · '}Amount due: {rupee(r.due_amount)}
-                {!r.is_active && <span className="text-red-500 font-semibold"> · DISABLED</span>}
+
+              {/* Info row */}
+              <p className="text-xs text-ledger-inkSoft mb-0.5">{r.owner_name} · {r.phone}</p>
+              <p className="text-[11px] text-ledger-inkSoft mb-3">
+                Expiry: {fmtDate(r.plan_expiry)}
+                {r.days_left > 0 && ` (${r.days_left} din baki)`}
+                {r.due_amount ? ` · Due: ${rupee(r.due_amount)}` : ''}
               </p>
 
-              <div className="flex gap-1.5 flex-wrap">
-                {['trial', 'basic', 'pro'].map((p) => (
-                  <button key={p} onClick={() => updatePlan(r.id, p)}
-                    disabled={r.plan === p}
-                    className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border ${
-                      r.plan === p ? 'bg-ledger-red text-white border-ledger-red' : 'border-ledger-red/30 text-ledger-red'
-                    } disabled:opacity-50`}>
-                    {p}
-                  </button>
-                ))}
-                <button onClick={() => extendTrial(r.id)}
-                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-ledger-inkSoft/30 text-ledger-inkSoft">
-                  Set Trial Days
+              {/* Action buttons */}
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => openConfirmPanel(r)}
+                  className="px-3 py-1.5 text-[11px] font-semibold rounded-lg bg-green-600 text-white">
+                  ✓ Payment Confirm
                 </button>
-                <button onClick={() => setAmount(r.id, r.due_amount)}
-                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-ledger-inkSoft/30 text-ledger-inkSoft">
-                  Set Amount
-                </button>
-                <button onClick={() => toggleActive(r.id, r.is_active)}
-                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border ${
-                    r.is_active ? 'border-red-300 text-red-500' : 'border-green-300 text-green-600'
+                <button
+                  onClick={() => toggleActive(r.id, r.is_active)}
+                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg border ${
+                    r.is_active
+                      ? 'border-red-300 text-red-500'
+                      : 'border-green-400 text-green-600'
                   }`}>
-                  {r.is_active ? 'Disable' : 'Enable'}
+                  {r.is_active ? '⏸ Disable' : '▶ Enable'}
                 </button>
               </div>
+
+              {/* Confirm Payment inline panel */}
+              {confirmPanel?.id === r.id && (
+                <div className="mt-3 border-t pt-3 space-y-2.5">
+                  <p className="text-xs font-semibold text-ledger-ink">Payment Confirm Karo</p>
+
+                  {/* Plan selector */}
+                  <div>
+                    <p className="text-[11px] text-ledger-inkSoft mb-1">Plan</p>
+                    <div className="flex gap-2">
+                      {['trial', 'basic', 'pro'].map((p) => (
+                        <button key={p} onClick={() => setConfirmPanel((prev) => ({ ...prev, plan: p, days: PLAN_DURATION[p] }))}
+                          className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg border ${
+                            confirmPanel.plan === p
+                              ? 'bg-ledger-red text-white border-ledger-red'
+                              : 'border-ledger-red/30 text-ledger-red'
+                          }`}>
+                          {p.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Duration */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-ledger-inkSoft shrink-0">Duration (din):</span>
+                    <input type="number" min="1" value={confirmPanel.days}
+                      onChange={(e) => setConfirmPanel((prev) => ({ ...prev, days: e.target.value }))}
+                      className="w-20 px-2 py-1.5 rounded-lg border border-ledger-red/20 text-sm figure" />
+                  </div>
+
+                  {/* Amount due (optional) */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-ledger-inkSoft shrink-0">Amount due (₹):</span>
+                    <input type="number" min="0" value={confirmPanel.amount}
+                      placeholder="0 = clear"
+                      onChange={(e) => setConfirmPanel((prev) => ({ ...prev, amount: e.target.value }))}
+                      className="w-24 px-2 py-1.5 rounded-lg border border-ledger-red/20 text-sm figure" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => setConfirmPanel(null)}
+                      className="py-2 rounded-lg border border-ledger-ink/20 text-xs text-ledger-inkSoft">
+                      Cancel
+                    </button>
+                    <button onClick={saveConfirmPayment}
+                      className="py-2 rounded-lg bg-green-600 text-white text-xs font-bold">
+                      ✓ Enable + Save
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <p className="text-[10px] text-ledger-inkSoft mt-2">Created: {fmtDate(r.created_at)}</p>
             </div>
           ))}

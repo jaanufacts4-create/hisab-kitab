@@ -78,6 +78,7 @@ router.get('/payment-info', async (req, res) => {
     payee_name: adminRows[0]?.owner_name || 'Hisab Kitab',
     amount: selfRows[0]?.due_amount || null,
     restaurant_name: selfRows[0]?.name || '',
+    contact_phone: ADMIN_PHONES[0] || null,
   });
 });
 

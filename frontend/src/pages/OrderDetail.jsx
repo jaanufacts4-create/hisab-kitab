@@ -181,10 +181,12 @@ export default function OrderDetail() {
 
   const isOwnerOrCashier = user?.role === 'owner' || user?.role === 'cashier';
   const isWaiter = user?.role === 'waiter';
-  const canBill = (isOwnerOrCashier || isWaiter) && (
-    order.status === 'served' ||
-    (order.status === 'open' && isOwnerOrCashier && !hasReady && !hasPreparing)
-  );
+  // allItemsDone = no items pending at kitchen or waiter level (all served)
+  // Billing shows only after waiter marks served (hasReady becomes false)
+  const allItemsDone = !hasOpen && !hasPreparing && !hasReady;
+  const canBill = (isOwnerOrCashier || isWaiter) &&
+    !['billed', 'cancelled'].includes(order.status) &&
+    allItemsDone;
   // Allow adding items right up until the bill is actually generated, but
   // not for kitchen staff — only owner/cashier/waiter can add items.
   const canAddItems = ['open','preparing','ready'].includes(order.status) &&
@@ -404,12 +406,4 @@ export default function OrderDetail() {
               ✅ Payment Mil Gayi — Confirm
             </button>
             <button onClick={() => setShowQR(false)}
-              className="w-full py-2 rounded-xl border border-gray-200 text-ledger-inkSoft text-sm">
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+              className="w-full py-

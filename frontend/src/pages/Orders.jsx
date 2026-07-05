@@ -252,10 +252,12 @@ export default function Orders() {
                       {lang === 'hi' ? '💳 Bill Banao' : '💳 Create Bill'}
                     </Link>
                   )}
-                  <Link to={`/orders/${o.id}/add-items`} onClick={e => e.stopPropagation()}
-                    className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-ledger-red text-ledger-red text-center">
-                    {lang === 'hi' ? '＋ Items Joṛo' : '＋ Add Items'}
-                  </Link>
+                  {user?.role !== 'kitchen' && (
+                    <Link to={`/orders/${o.id}/add-items`} onClick={e => e.stopPropagation()}
+                      className="flex-1 py-1.5 text-xs font-medium rounded-lg border border-ledger-red text-ledger-red text-center">
+                      {lang === 'hi' ? '＋ Items Joṛo' : '＋ Add Items'}
+                    </Link>
+                  )}
                 </div>
               </Link>
               );

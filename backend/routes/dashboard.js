@@ -38,7 +38,7 @@ router.get('/summary', requireRole('owner'), async (req, res) => {
   );
 
   const [openOrdersRows] = await pool.query(
-    `SELECT COUNT(*) AS open_orders FROM orders WHERE restaurant_id = ? AND status = 'open'`,
+    `SELECT COUNT(*) AS open_orders FROM orders WHERE restaurant_id = ? AND status NOT IN ('billed','cancelled')`,
     [restaurantId]
   );
 

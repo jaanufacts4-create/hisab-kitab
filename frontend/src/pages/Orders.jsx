@@ -39,12 +39,13 @@ export default function Orders() {
   // notification tone. Stays null until the first successful load so
   // opening the page doesn't beep for orders that were already there.
   const prevOrdersRef = useRef(null);
+  const filterRef = useRef(filter);
 
   // IMPORTANT: always handle the failure case — without a .catch() here, a
   // failed request silently leaves `orders` empty and looks exactly like
   // "no orders today" even though the data is fine on the server.
   function load(currentFilter) {
-    const f = currentFilter ?? filter;
+    const f = currentFilter ?? filterRef.current;
     api.get(f === 'open' ? '/orders?filter=open' : '/orders')
       .then(({ data }) => {
         if (prevOrdersRef.current) {
@@ -84,7 +85,7 @@ export default function Orders() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(filter); }, [filter]);
+  useEffect(() => { filterRef.current = filter; load(filter); }, [filter]);
 
   // Auto-refresh for live kitchen updates — 5s gives a much snappier
   // cross-device sync than the old 15s without meaningfully increasing

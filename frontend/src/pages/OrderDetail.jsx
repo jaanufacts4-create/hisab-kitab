@@ -180,7 +180,7 @@ export default function OrderDetail() {
   const hasReady = items.some((it) => it.status === 'ready');
 
   const isOwnerOrCashier = user?.role === 'owner' || user?.role === 'cashier';
-  const waiterCanPay = user?.role === 'waiter' && canShowQrLive && upiId;
+  const waiterCanPay = user?.role === 'waiter' && canShowQrLive;
   const canBill = (isOwnerOrCashier || waiterCanPay) && (
     order.status === 'ready' ||
     (order.status === 'open' && user?.role === 'owner' && !hasReady && !hasPreparing)
@@ -413,3 +413,4 @@ export default function OrderDetail() {
     </div>
   );
 }
+         

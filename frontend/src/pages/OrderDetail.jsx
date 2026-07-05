@@ -181,12 +181,11 @@ export default function OrderDetail() {
 
   const isOwnerOrCashier = user?.role === 'owner' || user?.role === 'cashier';
   const isWaiter = user?.role === 'waiter';
+  // allAtLeastReady: kitchen done, no open/preparing items
+  // Same condition for both owner and waiter — same QR, same billing
   const allAtLeastReady = !hasOpen && !hasPreparing;
-  const allServed = !hasOpen && !hasPreparing && !hasReady;
-  const canBill = !['billed', 'cancelled'].includes(order.status) && (
-    (isOwnerOrCashier && allAtLeastReady) ||
-    (isWaiter && allServed)
-  );
+  const canBill = !['billed', 'cancelled'].includes(order.status) &&
+    allAtLeastReady && (isOwnerOrCashier || isWaiter);
   // Allow adding items right up until the bill is actually generated, but
   // not for kitchen staff — only owner/cashier/waiter can add items.
   const canAddItems = ['open','preparing','ready'].includes(order.status) &&

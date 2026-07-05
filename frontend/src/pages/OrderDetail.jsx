@@ -90,8 +90,9 @@ export default function OrderDetail() {
   }, [id]);
 
   // Fetch restaurant UPI ID for QR generation
+  // Waiter with canShowQr permission also needs this
   useEffect(() => {
-    if (user?.role === 'owner' || user?.role === 'cashier') {
+    if (user?.role === 'owner' || user?.role === 'cashier' || user?.canShowQr) {
       api.get('/restaurant/me').then(({ data }) => {
         if (data.upi_id) setUpiId(data.upi_id);
       }).catch(() => {});

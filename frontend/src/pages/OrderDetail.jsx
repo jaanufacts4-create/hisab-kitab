@@ -79,6 +79,12 @@ export default function OrderDetail() {
   }
   useEffect(load, [id]);
 
+  // Auto-refresh so owner sees kitchen status changes without manual reload
+  useEffect(() => {
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, [id]);
+
   async function pay(mode) {
     setError(''); setSubmitting(true);
     try {

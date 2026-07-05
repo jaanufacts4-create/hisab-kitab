@@ -64,4 +64,11 @@ export default function App() {
     <LangProvider>
       <AuthProvider>
         <DateProvider>
-          <BrowserRout
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </DateProvider>
+      </AuthProvider>
+    </LangProvider>
+  );
+}

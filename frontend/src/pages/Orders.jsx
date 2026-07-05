@@ -15,7 +15,6 @@ const STATUS_COLOR = {
   open:       'bg-yellow-50 text-yellow-700 border-yellow-200',
   preparing:  'bg-blue-50 text-blue-700 border-blue-200',
   ready:      'bg-green-50 text-green-700 border-green-200',
-  served:     'bg-purple-50 text-purple-700 border-purple-200',
   billed:     'bg-gray-50 text-gray-500 border-gray-200',
   cancelled:  'bg-red-50 text-red-400 border-red-200',
 };
@@ -123,7 +122,6 @@ export default function Orders() {
     open:      lang === 'hi' ? 'Naya' : 'New',
     preparing: lang === 'hi' ? 'Ban Raha Hai' : 'Preparing',
     ready:     lang === 'hi' ? '✓ Ready' : '✓ Ready',
-    served:    lang === 'hi' ? '🛎 Serve Hua' : '🛎 Served',
     billed:    lang === 'hi' ? 'Bill Ho Gaya' : 'Billed',
     cancelled: lang === 'hi' ? 'Cancel' : 'Cancelled',
   };
@@ -284,4 +282,14 @@ export default function Orders() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="figure text-sm">{rupee(o.total)}</span>
-          
+                  <StampBadge status={o.payment_mode || o.payment_status} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+      <BottomNav />
+    </div>
+  );
+}

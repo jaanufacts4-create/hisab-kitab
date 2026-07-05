@@ -55,7 +55,6 @@ const STATUS_STYLE = {
   open:       { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200' },
   preparing:  { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200'  },
   ready:      { bg: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200' },
-  served:     { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
   billed:     { bg: 'bg-gray-50',   text: 'text-gray-500',   border: 'border-gray-200'  },
   cancelled:  { bg: 'bg-red-50',    text: 'text-red-400',    border: 'border-red-200'   },
 };
@@ -78,7 +77,9 @@ export default function OrderDetail() {
   const [upiId, setUpiId] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [showQR, setShowQR] = useState(false);
-  const [canShowQrLive, setCanShowQrLive] = useState(false); // unused — kept for future
+  // Start with JWT value so it works immediately on first render,
+  // then backend live-check overrides it (handles toggle without re-login)
+  const [canShowQrLive, setCanShowQrLive] = useState(!!user?.canShowQr);
 
   function load() {
     api.get(`/orders/${id}`).then(({ data }) => setOrder(data));
@@ -157,7 +158,6 @@ export default function OrderDetail() {
     open:      lang === 'hi' ? 'Naya Order' : 'New Order',
     preparing: lang === 'hi' ? 'Ban Raha Hai' : 'Preparing',
     ready:     lang === 'hi' ? 'Ready Hai' : 'Ready',
-    served:    lang === 'hi' ? 'Serve Ho Gaya' : 'Served',
     billed:    lang === 'hi' ? 'Bill Ho Gaya' : 'Billed',
     cancelled: lang === 'hi' ? 'Cancel' : 'Cancelled',
   };
@@ -181,11 +181,10 @@ export default function OrderDetail() {
 
   const isOwnerOrCashier = user?.role === 'owner' || user?.role === 'cashier';
   const isWaiter = user?.role === 'waiter';
-  // Billing shows when all items are done (none pending in kitchen)
-  const allItemsDone = !hasOpen && !hasPreparing;
-  const canBill = (isOwnerOrCashier || isWaiter) && allItemsDone &&
-    !['billed', 'cancelled'].includes(order.status) &&
-    (order.status !== 'open' || (isOwnerOrCashier && !hasReady));
+  const canBill = (isOwnerOrCashier || isWaiter) && (
+    order.status === 'served' ||
+    (order.status === 'open' && isOwnerOrCashier && !hasReady && !hasPreparing)
+  );
   // Allow adding items right up until the bill is actually generated, but
   // not for kitchen staff — only owner/cashier/waiter can add items.
   const canAddItems = ['open','preparing','ready'].includes(order.status) &&
@@ -350,7 +349,7 @@ export default function OrderDetail() {
           </button>
         )}
 
-        {hasReady && user?.role !== 'kitchen' && (
+        {hasReady && user?.role === 'waiter' && (
           <button onClick={markServed} disabled={submitting}
             className="print-hidden w-full py-3 rounded-xl bg-green-100 text-green-700 font-semibold">
             🛎 {lang === 'hi' ? 'Serve Ho Gaya — Mark Karein' : 'Mark as Served'}
@@ -405,4 +404,12 @@ export default function OrderDetail() {
               ✅ Payment Mil Gayi — Confirm
             </button>
             <button onClick={() => setShowQR(false)}
-              className="w-full py-2 rounded-xl border border-gray-200 text-led
+              className="w-full py-2 rounded-xl border border-gray-200 text-ledger-inkSoft text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

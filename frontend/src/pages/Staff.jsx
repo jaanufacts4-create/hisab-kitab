@@ -158,4 +158,15 @@ export default function Staff() {
                 {s.role !== 'owner' && (
                   <button onClick={() => deactivate(s.id)}
                     className="text-ledger-rust text-xs font-medium border border-ledger-rust/30 px-2.5 py-1 rounded-lg">
-                    {r
+                    {removeBtn}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <BottomNav />
+    </div>
+  );
+}

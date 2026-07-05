@@ -248,7 +248,7 @@ export default function Analytics() {
                 labelKey="label"
                 color="#B91C1C"
                 showRupee
-                formatVal={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`}
+                formatVal={(v) => Math.round(v).toLocaleString('en-IN')}
               />
             </div>
 
@@ -260,7 +260,7 @@ export default function Analytics() {
                 valueKey="total"
                 labelKey="label"
                 color="#EA580C"
-                formatVal={(v) => v >= 1000 ? `${(v/1000).toFixed(1)}k` : `${Math.round(v)}`}
+                formatVal={(v) => Math.round(v).toLocaleString('en-IN')}
               />
             </div>
 

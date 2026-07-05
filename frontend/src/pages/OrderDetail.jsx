@@ -177,9 +177,10 @@ export default function OrderDetail() {
   const hasPreparing = items.some((it) => it.status === 'preparing');
   const hasReady = items.some((it) => it.status === 'ready');
 
-  const canBill = (user?.role === 'owner' || user?.role === 'cashier') && (
+  const isOwnerOrCashier = user?.role === 'owner' || user?.role === 'cashier';
+  const waiterCanPay = user?.role === 'waiter' && canShowQrLive && upiId;
+  const canBill = (isOwnerOrCashier || waiterCanPay) && (
     order.status === 'ready' ||
-    // Direct billing allowed for fresh orders (nothing in kitchen yet)
     (order.status === 'open' && user?.role === 'owner' && !hasReady && !hasPreparing)
   );
   // Allow adding items right up until the bill is actually generated, but
@@ -353,34 +354,29 @@ export default function OrderDetail() {
           </button>
         )}
 
-        {/* Waiter with QR permission — can show UPI QR to customer */}
-        {user?.role === 'waiter' && canShowQrLive && upiId &&
-         !hasOpen && !hasPreparing && !['billed','cancelled'].includes(order.status) && (
-          <button onClick={openQR} disabled={submitting}
-            className="print-hidden w-full py-3 rounded-xl bg-blue-600 text-white font-semibold text-sm">
-            📱 {lang === 'hi' ? 'UPI QR Dikhao Customer Ko' : 'Show UPI QR to Customer'}
-          </button>
-        )}
-
-        {/* Billing */}
+        {/* Billing — owner/cashier see all methods; waiter with QR permission sees only UPI */}
         {canBill && (
           <div className="print-hidden card p-4">
             <p className="font-bold text-sm mb-3 text-ledger-ink">
               💳 {lang === 'hi' ? 'Payment Method Chunein' : 'Select Payment Method'}
             </p>
-            <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => pay('cash')} disabled={submitting}
-                className="py-3 rounded-xl bg-ledger-sage text-white font-bold text-sm shadow disabled:opacity-60">
-                💵 {lang === 'hi' ? 'Cash' : 'Cash'}
-              </button>
+            <div className={`grid gap-2 ${isOwnerOrCashier ? 'grid-cols-3' : 'grid-cols-1'}`}>
+              {isOwnerOrCashier && (
+                <button onClick={() => pay('cash')} disabled={submitting}
+                  className="py-3 rounded-xl bg-ledger-sage text-white font-bold text-sm shadow disabled:opacity-60">
+                  💵 {lang === 'hi' ? 'Cash' : 'Cash'}
+                </button>
+              )}
               <button onClick={upiId ? openQR : () => pay('upi')} disabled={submitting}
                 className="py-3 rounded-xl bg-blue-600 text-white font-bold text-sm shadow disabled:opacity-60">
                 📱 UPI
               </button>
-              <button onClick={() => pay('credit')} disabled={submitting}
-                className="py-3 rounded-xl bg-ledger-rust text-white font-bold text-sm shadow disabled:opacity-60">
-                📒 {lang === 'hi' ? 'Khata' : 'Credit'}
-              </button>
+              {isOwnerOrCashier && (
+                <button onClick={() => pay('credit')} disabled={submitting}
+                  className="py-3 rounded-xl bg-ledger-rust text-white font-bold text-sm shadow disabled:opacity-60">
+                  📒 {lang === 'hi' ? 'Khata' : 'Credit'}
+                </button>
+              )}
             </div>
           </div>
         )}

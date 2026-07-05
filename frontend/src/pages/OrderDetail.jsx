@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import QRCode from 'qrcode';
 import api from '../api';
 import Header from '../components/Header';
 import { useLang } from '../context/LangContext';
@@ -73,6 +74,9 @@ export default function OrderDetail() {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [upiId, setUpiId] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [showQR, setShowQR] = useState(false);
 
   function load() {
     api.get(`/orders/${id}`).then(({ data }) => setOrder(data));
@@ -84,6 +88,15 @@ export default function OrderDetail() {
     const interval = setInterval(load, 5000);
     return () => clearInterval(interval);
   }, [id]);
+
+  // Fetch restaurant UPI ID for QR generation
+  useEffect(() => {
+    if (user?.role === 'owner' || user?.role === 'cashier') {
+      api.get('/restaurant/me').then(({ data }) => {
+        if (data.upi_id) setUpiId(data.upi_id);
+      }).catch(() => {});
+    }
+  }, []);
 
   async function pay(mode) {
     setError(''); setSubmitting(true);
@@ -115,6 +128,14 @@ export default function OrderDetail() {
     try { await api.put(`/orders/${id}/serve`); load(); }
     catch (err) { setError(err.response?.data?.error || 'Could not mark as served'); }
     finally { setSubmitting(false); }
+  }
+
+  async function openQR() {
+    if (!upiId || !order) return;
+    const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(user?.restaurantName || 'Restaurant')}&am=${order.total}&cu=INR`;
+    const url = await QRCode.toDataURL(upiLink, { width: 280, margin: 1 });
+    setQrDataUrl(url);
+    setShowQR(true);
   }
 
   function printBill() {
@@ -335,7 +356,7 @@ export default function OrderDetail() {
                 className="py-3 rounded-xl bg-ledger-sage text-white font-bold text-sm shadow disabled:opacity-60">
                 💵 {lang === 'hi' ? 'Cash' : 'Cash'}
               </button>
-              <button onClick={() => pay('upi')} disabled={submitting}
+              <button onClick={upiId ? openQR : () => pay('upi')} disabled={submitting}
                 className="py-3 rounded-xl bg-blue-600 text-white font-bold text-sm shadow disabled:opacity-60">
                 📱 UPI
               </button>
@@ -347,6 +368,33 @@ export default function OrderDetail() {
           </div>
         )}
       </div>
+
+      {/* UPI QR Modal */}
+      {showQR && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4"
+          onClick={() => setShowQR(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+            <p className="font-bold text-lg text-ledger-ink mb-1">📱 UPI Payment</p>
+            <p className="text-sm text-ledger-inkSoft mb-1">{upiId}</p>
+            <p className="text-2xl font-bold text-ledger-red mb-4">{rupee(order.total)}</p>
+            <img src={qrDataUrl} alt="UPI QR" className="mx-auto rounded-xl mb-4" style={{ width: 220, height: 220 }} />
+            <p className="text-xs text-ledger-inkSoft mb-4">
+              Customer ko yeh QR scan karne do apne UPI app se
+            </p>
+            <button
+              onClick={async () => { setShowQR(false); await pay('upi'); }}
+              disabled={submitting}
+              className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm mb-2 disabled:opacity-60">
+              ✅ Payment Mil Gayi — Confirm
+            </button>
+            <button onClick={() => setShowQR(false)}
+              className="w-full py-2 rounded-xl border border-gray-200 text-ledger-inkSoft text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

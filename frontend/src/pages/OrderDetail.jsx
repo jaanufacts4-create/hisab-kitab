@@ -345,6 +345,15 @@ export default function OrderDetail() {
           </button>
         )}
 
+        {/* Waiter with QR permission — can show UPI QR to customer */}
+        {user?.role === 'waiter' && user?.canShowQr && upiId &&
+         !hasOpen && !hasPreparing && !['billed','cancelled'].includes(order.status) && (
+          <button onClick={openQR} disabled={submitting}
+            className="print-hidden w-full py-3 rounded-xl bg-blue-600 text-white font-semibold text-sm">
+            📱 {lang === 'hi' ? 'UPI QR Dikhao Customer Ko' : 'Show UPI QR to Customer'}
+          </button>
+        )}
+
         {/* Billing */}
         {canBill && (
           <div className="print-hidden card p-4">

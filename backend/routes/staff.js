@@ -10,7 +10,7 @@ router.use(authMiddleware);
 // List staff for the logged-in restaurant
 router.get('/', async (req, res) => {
   const [rows] = await pool.query(
-    'SELECT id, name, phone, role, is_active, created_at FROM staff WHERE restaurant_id = ? ORDER BY created_at DESC',
+    'SELECT id, name, phone, role, is_active, can_show_qr, created_at FROM staff WHERE restaurant_id = ? ORDER BY created_at DESC',
     [req.restaurant_id]
   );
   res.json(rows);
@@ -58,6 +58,21 @@ router.put('/:id/deactivate', requireRole('owner'), async (req, res) => {
     [req.params.id, req.restaurant_id]
   );
   res.json({ ok: true });
+});
+
+// Toggle UPI QR permission for a waiter (owner only)
+router.put('/:id/toggle-qr', requireRole('owner'), async (req, res) => {
+  const [rows] = await pool.query(
+    'SELECT can_show_qr FROM staff WHERE id = ? AND restaurant_id = ?',
+    [req.params.id, req.restaurant_id]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Staff not found' });
+  const newVal = rows[0].can_show_qr ? 0 : 1;
+  await pool.query(
+    'UPDATE staff SET can_show_qr = ? WHERE id = ? AND restaurant_id = ?',
+    [newVal, req.params.id, req.restaurant_id]
+  );
+  res.json({ ok: true, can_show_qr: newVal });
 });
 
 module.exports = router;

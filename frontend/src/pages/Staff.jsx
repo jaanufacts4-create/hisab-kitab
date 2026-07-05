@@ -53,6 +53,11 @@ export default function Staff() {
     load();
   }
 
+  async function toggleQr(id) {
+    await api.put(`/staff/${id}/toggle-qr`);
+    load();
+  }
+
   const ROLE_LABELS = {
     waiter:  lang === 'hi' ? 'Waiter' : 'Waiter',
     cashier: lang === 'hi' ? 'Cashier' : 'Cashier',
@@ -139,21 +144,36 @@ export default function Staff() {
 
         <div className="space-y-2">
           {list.map((s) => (
-            <div key={s.id} className="bg-white rounded-xl border border-ledger-red/15 p-3.5 flex items-center justify-between">
-              <div>
-                <p className="font-medium text-sm">{s.name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-ledger-red/10 text-ledger-red capitalize">
-                    {ROLE_LABELS[s.role] || s.role}
-                  </span>
-                  {s.phone && <span className="text-xs text-ledger-inkSoft">{s.phone}</span>}
+            <div key={s.id} className="bg-white rounded-xl border border-ledger-red/15 p-3.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">{s.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-ledger-red/10 text-ledger-red capitalize">
+                      {ROLE_LABELS[s.role] || s.role}
+                    </span>
+                    {s.phone && <span className="text-xs text-ledger-inkSoft">{s.phone}</span>}
+                  </div>
                 </div>
+                {s.role !== 'owner' && (
+                  <button onClick={() => deactivate(s.id)}
+                    className="text-ledger-rust text-xs font-medium border border-ledger-rust/30 px-2.5 py-1 rounded-lg">
+                    {removeBtn}
+                  </button>
+                )}
               </div>
-              {s.role !== 'owner' && (
-                <button onClick={() => deactivate(s.id)}
-                  className="text-ledger-rust text-xs font-medium border border-ledger-rust/30 px-2.5 py-1 rounded-lg">
-                  {removeBtn}
-                </button>
+              {/* UPI QR permission — only relevant for waiters */}
+              {s.role === 'waiter' && (
+                <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-dashed border-gray-100">
+                  <div>
+                    <p className="text-xs font-medium text-ledger-ink">📱 UPI QR dikhane ka haq</p>
+                    <p className="text-[10px] text-ledger-inkSoft">Customer ko QR scan karne de sakta hai</p>
+                  </div>
+                  <button onClick={() => toggleQr(s.id)}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${s.can_show_qr ? 'bg-green-500' : 'bg-gray-200'}`}>
+                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${s.can_show_qr ? 'left-5' : 'left-0.5'}`} />
+                  </button>
+                </div>
               )}
             </div>
           ))}

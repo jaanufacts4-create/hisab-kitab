@@ -187,6 +187,11 @@ async function initDb() {
     console.error('Migration 3 error:', e.message);
   }
 
+  // Migration 4: add can_show_qr permission column to staff
+  try {
+    await client.execute('ALTER TABLE staff ADD COLUMN can_show_qr INTEGER NOT NULL DEFAULT 0');
+  } catch (e) { /* already exists */ }
+
   try {
     const tables = await client.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
     console.log('DB tables (Turso):', toPlainRows(tables).map((t) => t.name).join(', '));

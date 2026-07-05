@@ -97,11 +97,11 @@ router.post('/staff-login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Incorrect PIN' });
 
     const token = jwt.sign(
-      { restaurant_id: staff.restaurant_id, staff_id: staff.id, role: staff.role },
+      { restaurant_id: staff.restaurant_id, staff_id: staff.id, role: staff.role, can_show_qr: !!staff.can_show_qr },
       JWT_SECRET,
       { expiresIn: '12h' } // shorter session for shared-device staff logins
     );
-    res.json({ token, staff: { id: staff.id, name: staff.name, role: staff.role } });
+    res.json({ token, staff: { id: staff.id, name: staff.name, role: staff.role, can_show_qr: !!staff.can_show_qr } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login failed, please try again' });

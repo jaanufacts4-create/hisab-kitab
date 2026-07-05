@@ -64,7 +64,7 @@ export default function Login() {
     e.preventDefault(); setError(''); setLoading(true);
     try {
       const { data } = await api.post('/auth/staff-login', { staff_id: selectedStaff.id, pin });
-      login(data.token, { role: data.staff.role, staffName: data.staff.name, restaurantName });
+      login(data.token, { role: data.staff.role, staffName: data.staff.name, restaurantName, canShowQr: !!data.staff.can_show_qr });
       navigate('/orders');
     } catch (err) {
       setError(err.response?.data?.error || t('pin_error'));

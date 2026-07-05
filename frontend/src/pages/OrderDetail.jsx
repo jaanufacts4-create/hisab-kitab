@@ -77,7 +77,9 @@ export default function OrderDetail() {
   const [upiId, setUpiId] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [showQR, setShowQR] = useState(false);
-  const [canShowQrLive, setCanShowQrLive] = useState(false);
+  // Start with JWT value so it works immediately on first render,
+  // then backend live-check overrides it (handles toggle without re-login)
+  const [canShowQrLive, setCanShowQrLive] = useState(!!user?.canShowQr);
 
   function load() {
     api.get(`/orders/${id}`).then(({ data }) => setOrder(data));

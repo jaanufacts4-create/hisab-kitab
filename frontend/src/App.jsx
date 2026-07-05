@@ -16,6 +16,7 @@ import AddItems from './pages/AddItems';
 import Analytics from './pages/Analytics';
 import Plans from './pages/Plans';
 import Admin from './pages/Admin';
+import Settings from './pages/Settings';
 import ExpiredScreen from './pages/ExpiredScreen';
 import PublicMenu from './pages/PublicMenu';
 import PublicOrderStatus from './pages/PublicOrderStatus';
@@ -47,6 +48,7 @@ function AppRoutes() {
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
       <Route path="/plans" element={<ProtectedRoute allowExpired><Plans /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute allowExpired><Admin /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
       {/* Customer-facing QR self-order — deliberately NOT behind
           ProtectedRoute, no staff login involved. Gated server-side per

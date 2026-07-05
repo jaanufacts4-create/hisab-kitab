@@ -133,13 +133,15 @@ export default function OrderDetail() {
   };
 
   const s = STATUS_STYLE[order.status] || STATUS_STYLE.open;
-  const canBill = (user?.role === 'owner' || user?.role === 'cashier') &&
-                  (order.status === 'ready' || (order.status === 'open' && user?.role === 'owner'));
-  // Allow adding items right up until the bill is actually generated — a
-  // customer can keep ordering more even after the kitchen marks the
-  // current round "ready" (servers should just tell the kitchen there's
-  // a new round; the backend bumps status back to "preparing" for that).
-  const canAddItems = ['open','preparing','ready'].includes(order.status);
+  const canBill = (user?.role === 'owner' || user?.role === 'cashier') && (
+    order.status === 'ready' ||
+    // Direct billing allowed for fresh orders (nothing in kitchen yet)
+    (order.status === 'open' && user?.role === 'owner' && !hasReady && !hasPreparing)
+  );
+  // Allow adding items right up until the bill is actually generated, but
+  // not for kitchen staff — only owner/cashier/waiter can add items.
+  const canAddItems = ['open','preparing','ready'].includes(order.status) &&
+                      user?.role !== 'kitchen';
 
   // Kitchen actions are driven by item-level status, not just the order's
   // overall status — so already-served items stay "Served" even while a

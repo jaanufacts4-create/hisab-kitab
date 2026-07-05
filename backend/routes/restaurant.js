@@ -16,16 +16,28 @@ router.get('/me', async (req, res) => {
   );
   if (!rows.length) return res.status(404).json({ error: 'Restaurant not found' });
   const r = rows[0];
+
+  // For staff logins, include their live permissions (so frontend doesn't
+  // rely on JWT — owner can toggle rights without requiring re-login)
+  let can_show_qr = false;
+  if (req.staff_id) {
+    const [sRows] = await pool.query(
+      'SELECT can_show_qr FROM staff WHERE id = ?', [req.staff_id]
+    );
+    if (sRows.length) can_show_qr = !!sRows[0].can_show_qr;
+  }
+
   res.json({
     id: r.id,
     name: r.name,
-    plan: getEffectivePlan(r),      // what feature gating should use
-    raw_plan: r.plan,                // the tier actually stored (trial/basic/pro)
+    plan: getEffectivePlan(r),
+    raw_plan: r.plan,
     plan_expiry: r.plan_expiry,
     days_left: daysLeft(r),
     qr_token: r.qr_token,
     upi_id: r.upi_id || null,
     is_admin: req.is_admin,
+    can_show_qr,
   });
 });
 

@@ -77,24 +77,31 @@ export default function OrderDetail() {
   const [upiId, setUpiId] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [showQR, setShowQR] = useState(false);
+  const [canShowQrLive, setCanShowQrLive] = useState(false);
 
   function load() {
     api.get(`/orders/${id}`).then(({ data }) => setOrder(data));
   }
   useEffect(load, [id]);
 
-  // Auto-refresh so owner sees kitchen status changes without manual reload
+  // Auto-refresh every 5s + immediately on tab/screen focus
   useEffect(() => {
     const interval = setInterval(load, 5000);
-    return () => clearInterval(interval);
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [id]);
 
-  // Fetch restaurant UPI ID for QR generation
-  // Waiter with canShowQr permission also needs this
+  // Fetch UPI ID + live QR permission from backend (not JWT, so owner
+  // toggling the right takes effect immediately — no re-login needed)
   useEffect(() => {
-    if (user?.role === 'owner' || user?.role === 'cashier' || user?.canShowQr) {
+    if (user?.role === 'owner' || user?.role === 'cashier' || user?.role === 'waiter') {
       api.get('/restaurant/me').then(({ data }) => {
         if (data.upi_id) setUpiId(data.upi_id);
+        if (data.can_show_qr !== undefined) setCanShowQrLive(!!data.can_show_qr);
       }).catch(() => {});
     }
   }, []);
@@ -347,7 +354,7 @@ export default function OrderDetail() {
         )}
 
         {/* Waiter with QR permission — can show UPI QR to customer */}
-        {user?.role === 'waiter' && user?.canShowQr && upiId &&
+        {user?.role === 'waiter' && canShowQrLive && upiId &&
          !hasOpen && !hasPreparing && !['billed','cancelled'].includes(order.status) && (
           <button onClick={openQR} disabled={submitting}
             className="print-hidden w-full py-3 rounded-xl bg-blue-600 text-white font-semibold text-sm">

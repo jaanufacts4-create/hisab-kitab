@@ -78,9 +78,17 @@ export default function OrderDetail() {
   const [upiId, setUpiId] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [showQR, setShowQR] = useState(false);
-  // Start with JWT value so it works immediately on first render,
-  // then backend live-check overrides it (handles toggle without re-login)
-  const [canShowQrLive, setCanShowQrLive] = useState(!!user?.canShowQr);
+  // Decode JWT directly for most reliable initial value
+  const [canShowQrLive, setCanShowQrLive] = useState(() => {
+    try {
+      const token = localStorage.getItem('hisab_token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.can_show_qr !== undefined) return !!payload.can_show_qr;
+      }
+    } catch {}
+    return !!user?.canShowQr;
+  });
 
   function load() {
     api.get(`/orders/${id}`).then(({ data }) => setOrder(data));
@@ -182,10 +190,14 @@ export default function OrderDetail() {
   const hasReady = items.some((it) => it.status === 'ready');
 
   const isOwnerOrCashier = user?.role === 'owner' || user?.role === 'cashier';
+  // Waiter sees UPI if owner has given them QR permission (live check from backend)
+  // OR from JWT — whichever is available. No upiId dependency.
   const waiterCanPay = user?.role === 'waiter' && canShowQrLive;
-  const canBill = (isOwnerOrCashier || waiterCanPay) && (
-    order.status === 'served' ||
-    (order.status === 'open' && user?.role === 'owner' && !hasReady && !hasPreparing)
+  // Billing shows when: all kitchen items are done (none open/preparing)
+  const allItemsDone = !hasOpen && !hasPreparing;
+  const canBill = (isOwnerOrCashier || waiterCanPay) && allItemsDone && (
+    ['ready', 'served'].includes(order.status) ||
+    (order.status === 'open' && user?.role === 'owner')
   );
   // Allow adding items right up until the bill is actually generated, but
   // not for kitchen staff — only owner/cashier/waiter can add items.
@@ -397,13 +409,4 @@ export default function OrderDetail() {
             <p className="text-2xl font-bold text-ledger-red mb-4">{rupee(order.total)}</p>
             <img src={qrDataUrl} alt="UPI QR" className="mx-auto rounded-xl mb-4" style={{ width: 220, height: 220 }} />
             <p className="text-xs text-ledger-inkSoft mb-4">
-              Customer ko yeh QR scan karne do apne UPI app se
-            </p>
-            <button
-              onClick={async () => { setShowQR(false); await pay('upi'); }}
-              disabled={submitting}
-              className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm mb-2 disabled:opacity-60">
-              ✅ Payment Mil Gayi — Confirm
-            </button>
-            <button onClick={() => setShowQR(false)}
-              className="w-full py-2 rounded-xl border bord
+              Customer ko yeh QR scan karne 

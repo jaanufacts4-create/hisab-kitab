@@ -32,6 +32,7 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filter, setFilter] = useState('today'); // 'today' | 'open'
 
   // Snapshot of the previous poll's orders (keyed by id), used purely to
   // detect what changed since last time so we know when to play a
@@ -42,8 +43,9 @@ export default function Orders() {
   // IMPORTANT: always handle the failure case — without a .catch() here, a
   // failed request silently leaves `orders` empty and looks exactly like
   // "no orders today" even though the data is fine on the server.
-  function load() {
-    api.get('/orders')
+  function load(currentFilter) {
+    const f = currentFilter ?? filter;
+    api.get(f === 'open' ? '/orders?filter=open' : '/orders')
       .then(({ data }) => {
         if (prevOrdersRef.current) {
           const prevById = prevOrdersRef.current;
@@ -82,13 +84,13 @@ export default function Orders() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(filter); }, [filter]);
 
   // Auto-refresh for live kitchen updates — 5s gives a much snappier
   // cross-device sync than the old 15s without meaningfully increasing
   // load for a single restaurant's traffic.
   useEffect(() => {
-    const interval = setInterval(load, 5000);
+    const interval = setInterval(() => load(), 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -139,9 +141,25 @@ export default function Orders() {
       <Header title={t('orders_title')} />
       <div className="px-4 mt-4">
         <Link to="/orders/new"
-          className="block text-center bg-ledger-red text-white font-medium py-3 rounded-xl mb-4">
+          className="block text-center bg-ledger-red text-white font-medium py-3 rounded-xl mb-3">
           {t('new_order')}
         </Link>
+
+        {/* Filter toggle */}
+        <div className="flex gap-1.5 mb-4 bg-white rounded-xl border border-ledger-red/15 p-1">
+          <button onClick={() => setFilter('today')}
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              filter === 'today' ? 'bg-ledger-red text-white' : 'text-ledger-inkSoft'
+            }`}>
+            {lang === 'hi' ? '📅 Aaj' : '📅 Today'}
+          </button>
+          <button onClick={() => setFilter('open')}
+            className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              filter === 'open' ? 'bg-ledger-red text-white' : 'text-ledger-inkSoft'
+            }`}>
+            {lang === 'hi' ? '🔴 Sab Open' : '🔴 All Open'}
+          </button>
+        </div>
 
         {loading && <p className="text-center text-ledger-inkSoft mt-8">{t('loading')}</p>}
         {!loading && error && (
@@ -169,7 +187,9 @@ export default function Orders() {
                       {o.table_no ? `Table ${o.table_no}` : o.customer_name || `Order #${o.id}`}
                     </p>
                     <p className="text-xs text-ledger-inkSoft">
-                      {parseServerDate(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                      {filter === 'open'
+                        ? parseServerDate(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ', ' + parseServerDate(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                        : parseServerDate(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

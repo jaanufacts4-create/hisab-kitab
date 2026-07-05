@@ -121,14 +121,26 @@ router.post('/:id/items', async (req, res) => {
 });
 
 // ---- List orders (defaults to today, IST) ----
+// ?filter=open  → all unclosed orders across all dates (for "All Open" tab)
+// ?date=YYYY-MM-DD → specific day (default: today)
 router.get('/', async (req, res) => {
   try {
-    const date = req.query.date || todayIST();
-    const [rows] = await pool.query(
-      `SELECT id,table_no,customer_name,status,payment_status,payment_mode,total,created_at
-       FROM orders WHERE restaurant_id=? AND DATE(created_at, '${IST_SHIFT}')=? ORDER BY created_at DESC`,
-      [req.restaurant_id, date]
-    );
+    let rows;
+    if (req.query.filter === 'open') {
+      [rows] = await pool.query(
+        `SELECT id,table_no,customer_name,status,payment_status,payment_mode,total,created_at
+         FROM orders WHERE restaurant_id=? AND status NOT IN ('billed','cancelled')
+         ORDER BY created_at DESC`,
+        [req.restaurant_id]
+      );
+    } else {
+      const date = req.query.date || todayIST();
+      [rows] = await pool.query(
+        `SELECT id,table_no,customer_name,status,payment_status,payment_mode,total,created_at
+         FROM orders WHERE restaurant_id=? AND DATE(created_at, '${IST_SHIFT}')=? ORDER BY created_at DESC`,
+        [req.restaurant_id, date]
+      );
+    }
 
     // Kitchen/waiter need to see WHAT to cook/serve — and at what stage each
     // item-batch is — not just the bill total. Fetched in ONE query (not

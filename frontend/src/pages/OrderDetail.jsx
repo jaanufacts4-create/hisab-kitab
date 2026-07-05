@@ -139,6 +139,15 @@ export default function OrderDetail() {
   };
 
   const s = STATUS_STYLE[order.status] || STATUS_STYLE.open;
+
+  // Kitchen actions are driven by item-level status, not just the order's
+  // overall status — so already-served items stay "Served" even while a
+  // newly added batch on the same order still needs Accept.
+  const items = order.items || [];
+  const hasOpen = items.some((it) => it.status === 'open');
+  const hasPreparing = items.some((it) => it.status === 'preparing');
+  const hasReady = items.some((it) => it.status === 'ready');
+
   const canBill = (user?.role === 'owner' || user?.role === 'cashier') && (
     order.status === 'ready' ||
     // Direct billing allowed for fresh orders (nothing in kitchen yet)
@@ -148,14 +157,6 @@ export default function OrderDetail() {
   // not for kitchen staff — only owner/cashier/waiter can add items.
   const canAddItems = ['open','preparing','ready'].includes(order.status) &&
                       user?.role !== 'kitchen';
-
-  // Kitchen actions are driven by item-level status, not just the order's
-  // overall status — so already-served items stay "Served" even while a
-  // newly added batch on the same order still needs Accept.
-  const items = order.items || [];
-  const hasOpen = items.some((it) => it.status === 'open');
-  const hasPreparing = items.some((it) => it.status === 'preparing');
-  const hasReady = items.some((it) => it.status === 'ready');
 
   return (
     <div className="min-h-screen ledger-bg pb-10">

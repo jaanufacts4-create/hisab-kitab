@@ -181,8 +181,6 @@ export default function OrderDetail() {
 
   const isOwnerOrCashier = user?.role === 'owner' || user?.role === 'cashier';
   const isWaiter = user?.role === 'waiter';
-  // allAtLeastReady: no open/preparing items (kitchen done — owner can bill)
-  // allServed: no open/preparing/ready items (waiter served — waiter can bill)
   const allAtLeastReady = !hasOpen && !hasPreparing;
   const allServed = !hasOpen && !hasPreparing && !hasReady;
   const canBill = !['billed', 'cancelled'].includes(order.status) && (
@@ -407,4 +405,13 @@ export default function OrderDetail() {
               className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm mb-2 disabled:opacity-60">
               ✅ Payment Mil Gayi — Confirm
             </button>
-    
+            <button onClick={() => setShowQR(false)}
+              className="w-full py-2 rounded-xl border border-gray-200 text-ledger-inkSoft text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

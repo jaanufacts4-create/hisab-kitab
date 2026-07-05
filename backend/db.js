@@ -236,10 +236,4 @@ const pool = {
       // above, so this is just kept for API compatibility with callers.
       beginTransaction: async function () {},
       commit: async function () { if (active) { await tx.commit(); active = false; } },
-      rollback: async function () { if (active) { await tx.rollback(); active = false; } },
-      release: async function () { try { tx.close(); } catch (e) { /* ignore */ } },
-    };
-  },
-};
-
-module.exports = pool;
+      rollba

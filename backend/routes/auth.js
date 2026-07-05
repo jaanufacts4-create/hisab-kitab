@@ -111,7 +111,4 @@ router.post('/staff-login', async (req, res) => {
 // ---- Public: return admin contact phone for "forgot password" ----
 router.get('/admin-contact', async (req, res) => {
   const { ADMIN_PHONES } = require('../utils/admin');
-  res.json({ phone: ADMIN_PHONES[0] || null });
-});
-
-module.exports = router;
+  res.json

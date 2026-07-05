@@ -224,6 +224,10 @@ router.put('/:id/serve', async (req, res) => {
     "UPDATE order_items SET status='served' WHERE order_id=? AND status='ready'",
     [req.params.id]
   );
+  await pool.query(
+    "UPDATE orders SET status='served' WHERE id=? AND restaurant_id=?",
+    [req.params.id, req.restaurant_id]
+  );
   res.json({ ok: true });
 });
 
@@ -270,10 +274,4 @@ router.put('/:id/payment', async (req, res) => {
 // ---- Cancel order ----
 router.put('/:id/cancel', async (req, res) => {
   await pool.query(
-    "UPDATE orders SET status='cancelled' WHERE id=? AND restaurant_id=?",
-    [req.params.id, req.restaurant_id]
-  );
-  res.json({ ok: true });
-});
-
-module.exports = router;
+    "UPDATE orders SET status='cancelle

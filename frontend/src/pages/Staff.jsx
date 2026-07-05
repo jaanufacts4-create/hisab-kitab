@@ -158,28 +158,4 @@ export default function Staff() {
                 {s.role !== 'owner' && (
                   <button onClick={() => deactivate(s.id)}
                     className="text-ledger-rust text-xs font-medium border border-ledger-rust/30 px-2.5 py-1 rounded-lg">
-                    {removeBtn}
-                  </button>
-                )}
-              </div>
-              {/* UPI QR permission — only relevant for waiters */}
-              {s.role === 'waiter' && (
-                <div className="flex items-center justify-between mt-2.5 pt-2.5 border-t border-dashed border-gray-100">
-                  <div>
-                    <p className="text-xs font-medium text-ledger-ink">📱 UPI QR dikhane ka haq</p>
-                    <p className="text-[10px] text-ledger-inkSoft">Customer ko QR scan karne de sakta hai</p>
-                  </div>
-                  <button onClick={() => toggleQr(s.id)}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${s.can_show_qr ? 'bg-green-500' : 'bg-gray-200'}`}>
-                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${s.can_show_qr ? 'left-5' : 'left-0.5'}`} />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-      <BottomNav />
-    </div>
-  );
-}
+                    {r

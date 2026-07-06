@@ -128,16 +128,20 @@ router.get('/', async (req, res) => {
     let rows;
     if (req.query.filter === 'open') {
       [rows] = await pool.query(
-        `SELECT id,table_no,customer_name,status,payment_status,payment_mode,total,created_at
-         FROM orders WHERE restaurant_id=? AND status NOT IN ('billed','cancelled')
-         ORDER BY created_at DESC`,
+        `SELECT o.id,o.table_no,o.customer_name,o.status,o.payment_status,o.payment_mode,o.total,o.created_at,
+                s.name AS collected_by_name
+         FROM orders o LEFT JOIN staff s ON s.id = o.collected_by_staff_id
+         WHERE o.restaurant_id=? AND o.status NOT IN ('billed','cancelled')
+         ORDER BY o.created_at DESC`,
         [req.restaurant_id]
       );
     } else {
       const date = req.query.date || todayIST();
       [rows] = await pool.query(
-        `SELECT id,table_no,customer_name,status,payment_status,payment_mode,total,created_at
-         FROM orders WHERE restaurant_id=? AND DATE(created_at, '${IST_SHIFT}')=? ORDER BY created_at DESC`,
+        `SELECT o.id,o.table_no,o.customer_name,o.status,o.payment_status,o.payment_mode,o.total,o.created_at,
+                s.name AS collected_by_name
+         FROM orders o LEFT JOIN staff s ON s.id = o.collected_by_staff_id
+         WHERE o.restaurant_id=? AND DATE(o.created_at, '${IST_SHIFT}')=? ORDER BY o.created_at DESC`,
         [req.restaurant_id, date]
       );
     }
@@ -274,13 +278,4 @@ router.put('/:id/payment', async (req, res) => {
   } finally { conn.release(); }
 });
 
-// ---- Cancel order ----
-router.put('/:id/cancel', async (req, res) => {
-  await pool.query(
-    "UPDATE orders SET status='cancelled' WHERE id=? AND restaurant_id=?",
-    [req.params.id, req.restaurant_id]
-  );
-  res.json({ ok: true });
-});
-
-module.exports = router;
+// ---- C

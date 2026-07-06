@@ -273,17 +273,22 @@ export default function Orders() {
             </p>
             {done.map((o) => (
               <Link key={o.id} to={`/orders/${o.id}`}
-                className="block bg-white/70 rounded-xl border border-ledger-red/10 p-3 flex items-center justify-between opacity-70">
-                <div>
-                  <p className="text-sm">{o.table_no ? `Table ${o.table_no}` : o.customer_name || `Order #${o.id}`}</p>
-                  <p className="text-xs text-ledger-inkSoft">
-                    {parseServerDate(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                className="block bg-white/70 rounded-xl border border-ledger-red/10 p-3 opacity-70">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm">{o.table_no ? `Table ${o.table_no}` : o.customer_name || `Order #${o.id}`}</p>
+                    <p className="text-xs text-ledger-inkSoft">
+                      {parseServerDate(o.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="figure text-sm">{rupee(o.total)}</span>
+                    <StampBadge status={o.payment_mode || o.payment_status} />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="figure text-sm">{rupee(o.total)}</span>
-                  <StampBadge status={o.payment_mode || o.payment_status} />
-                </div>
+                {o.collected_by_name && (
+                  <p className="text-[10px] text-green-700 mt-1">✅ Received by {o.collected_by_name}</p>
+                )}
               </Link>
             ))}
           </div>

@@ -185,7 +185,7 @@ export default function OrderDetail() {
   // Same condition for both owner and waiter — same QR, same billing
   const allAtLeastReady = !hasOpen && !hasPreparing;
   const canBill = !['billed', 'cancelled'].includes(order.status) &&
-    allAtLeastReady && (isOwnerOrCashier || isWaiter);
+    allAtLeastReady && (isOwnerOrCashier || (isWaiter && !!user?.canShowQr));
   // Allow adding items right up until the bill is actually generated, but
   // not for kitchen staff — only owner/cashier/waiter can add items.
   const canAddItems = ['open','preparing','ready'].includes(order.status) &&

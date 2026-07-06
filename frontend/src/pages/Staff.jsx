@@ -155,12 +155,24 @@ export default function Staff() {
                     {s.phone && <span className="text-xs text-ledger-inkSoft">{s.phone}</span>}
                   </div>
                 </div>
-                {s.role !== 'owner' && (
-                  <button onClick={() => deactivate(s.id)}
-                    className="text-ledger-rust text-xs font-medium border border-ledger-rust/30 px-2.5 py-1 rounded-lg">
-                    {removeBtn}
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {s.role === 'waiter' && (
+                    <button onClick={() => toggleQr(s.id)}
+                      className={`text-xs font-medium px-2.5 py-1 rounded-lg border transition-colors ${
+                        s.can_show_qr
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'text-ledger-inkSoft border-ledger-inkSoft/30'
+                      }`}>
+                      📱 QR
+                    </button>
+                  )}
+                  {s.role !== 'owner' && (
+                    <button onClick={() => deactivate(s.id)}
+                      className="text-ledger-rust text-xs font-medium border border-ledger-rust/30 px-2.5 py-1 rounded-lg">
+                      {removeBtn}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

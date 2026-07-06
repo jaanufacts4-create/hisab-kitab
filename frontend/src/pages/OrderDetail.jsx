@@ -300,11 +300,11 @@ export default function OrderDetail() {
               <div>Paid via {order.payment_mode.toUpperCase()}</div>
               {order.collected_by_name ? (
                 <div className="text-green-700 font-medium">
-                  ✅ {lang === 'hi' ? 'Payment li' : 'Payment received'} by {order.collected_by_name}
+                  Payment received by {order.collected_by_name}
                 </div>
-              ) : (isOwnerOrCashier || user?.role === 'owner') ? (
+              ) : (isOwnerOrCashier) ? (
                 <div>
-                  ✅ {lang === 'hi' ? 'Payment li' : 'Payment received'} by {user?.restaurantName || 'Owner'}
+                  Payment received by {user?.restaurantName || 'Owner'}
                 </div>
               ) : null}
             </div>
@@ -408,4 +408,18 @@ export default function OrderDetail() {
               Customer ko yeh QR scan karne do apne UPI app se
             </p>
             <button
-              onClick={async () => { setShowQR(false)
+              onClick={async () => { setShowQR(false); await pay('upi'); }}
+              disabled={submitting}
+              className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm mb-2 disabled:opacity-60">
+              ✅ Payment Mil Gayi — Confirm
+            </button>
+            <button onClick={() => setShowQR(false)}
+              className="w-full py-2 rounded-xl border border-gray-200 text-ledger-inkSoft text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

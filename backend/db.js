@@ -192,6 +192,11 @@ async function initDb() {
     await client.execute('ALTER TABLE staff ADD COLUMN can_show_qr INTEGER NOT NULL DEFAULT 0');
   } catch (e) { /* already exists */ }
 
+  // Migration 5: track which staff member collected the payment
+  try {
+    await client.execute('ALTER TABLE orders ADD COLUMN collected_by_staff_id INTEGER NULL');
+  } catch (e) { /* already exists */ }
+
   try {
     const tables = await client.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
     console.log('DB tables (Turso):', toPlainRows(tables).map((t) => t.name).join(', '));
@@ -236,4 +241,10 @@ const pool = {
       // above, so this is just kept for API compatibility with callers.
       beginTransaction: async function () {},
       commit: async function () { if (active) { await tx.commit(); active = false; } },
-      rollba
+      rollback: async function () { if (active) { await tx.rollback(); active = false; } },
+      release: async function () { try { tx.close(); } catch (e) { /* ignore */ } },
+    };
+  },
+};
+
+module.exports = pool;

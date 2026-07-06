@@ -174,7 +174,10 @@ router.get('/', async (req, res) => {
 // ---- Single order with line items ----
 router.get('/:id', async (req, res) => {
   const [orderRows] = await pool.query(
-    'SELECT * FROM orders WHERE id=? AND restaurant_id=?',
+    `SELECT o.*, s.name AS collected_by_name
+     FROM orders o
+     LEFT JOIN staff s ON s.id = o.collected_by_staff_id
+     WHERE o.id=? AND o.restaurant_id=?`,
     [req.params.id, req.restaurant_id]
   );
   if (!orderRows.length) return res.status(404).json({ error: 'Order not found' });
@@ -249,8 +252,8 @@ router.put('/:id/payment', async (req, res) => {
     }
     const payment_status = mode==='credit'?'credit':amount<order.total?'partial':'paid';
     await conn.query(
-      "UPDATE orders SET status='billed',payment_status=?,payment_mode=?,billed_at=datetime('now') WHERE id=?",
-      [payment_status, mode, order.id]
+      "UPDATE orders SET status='billed',payment_status=?,payment_mode=?,billed_at=datetime('now'),collected_by_staff_id=? WHERE id=?",
+      [payment_status, mode, req.staff_id || null, order.id]
     );
     await conn.query(
       'INSERT INTO payments (restaurant_id,order_id,amount,mode) VALUES (?,?,?,?)',
@@ -274,4 +277,10 @@ router.put('/:id/payment', async (req, res) => {
 // ---- Cancel order ----
 router.put('/:id/cancel', async (req, res) => {
   await pool.query(
-    "UPDATE orders SET status='cancelle
+    "UPDATE orders SET status='cancelled' WHERE id=? AND restaurant_id=?",
+    [req.params.id, req.restaurant_id]
+  );
+  res.json({ ok: true });
+});
+
+module.exports = router;

@@ -50,8 +50,10 @@ CREATE TABLE IF NOT EXISTS orders (
   created_by      INTEGER NULL,
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   billed_at       TEXT NULL,
+  collected_by_staff_id INTEGER NULL,
   FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES staff(id) ON DELETE SET NULL
+  FOREIGN KEY (created_by) REFERENCES staff(id) ON DELETE SET NULL,
+  FOREIGN KEY (collected_by_staff_id) REFERENCES staff(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS order_items (

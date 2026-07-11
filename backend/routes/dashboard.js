@@ -64,4 +64,4 @@ router.get('/summary', requireRole('owner'), async (req, res) => {
   });
 });
 
-modu
+module.exports = router;

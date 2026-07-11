@@ -26,8 +26,10 @@ export default function Inventory() {
       setItems(invRes.data);
       setRecipes(recRes.data);
       setMenuItems(menuRes.data.filter(m => m.is_active));
-    } catch {
-      setErr('Could not load inventory data');
+    } catch (e) {
+      const msg = e.response?.data?.error || e.message || 'Unknown error';
+      const status = e.response?.status || 'network';
+      setErr(`Load failed (${status}): ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -46,7 +48,10 @@ export default function Inventory() {
       <Header title="Inventory" />
 
       {err && (
-        <div className="mx-4 mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">{err}</div>
+        <div className="mx-4 mt-3 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex justify-between items-start gap-2">
+          <span>{err}</span>
+          <button onClick={load} className="shrink-0 text-xs underline font-semibold">Retry</button>
+        </div>
       )}
 
       {/* Tab bar */}
@@ -156,7 +161,9 @@ function ItemsTab({ items, onRefresh }) {
       cancelEdit();
       await onRefresh();
     } catch (e) {
-      setMsg(e.response?.data?.error || 'Save failed');
+      const msg = e.response?.data?.error || e.message || 'Save failed';
+      const status = e.response?.status || 'network';
+      setMsg(`Error ${status}: ${msg}`);
     } finally { setSaving(false); }
   }
 
@@ -295,7 +302,9 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
       setForm({ inventory_id: '', qty_per_serving: '' });
       await onRefresh();
     } catch (e) {
-      setMsg(e.response?.data?.error || 'Save failed');
+      const msg = e.response?.data?.error || e.message || 'Save failed';
+      const status = e.response?.status || 'network';
+      setMsg(`Error ${status}: ${msg}`);
     } finally { setSaving(false); }
   }
 
@@ -403,25 +412,4 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
               <div className="space-y-1">
                 {mrs.map(r => (
                   <div key={r.id} className="flex justify-between text-xs text-ledger-inkSoft">
-                    <span>{r.ingredient_name}</span>
-                    <span>{r.qty_per_serving} {r.unit}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })
-      }
-
-      {!selectedMenu && !recipes.length && (
-        <EmptyState text="No recipes yet. Select a dish above to start linking ingredients." />
-      )}
-    </div>
-  );
-}
-
-function EmptyState({ text }) {
-  return (
-    <div className="text-center py-12 text-ledger-inkSoft text-sm px-4">{text}</div>
-  );
-}
+     

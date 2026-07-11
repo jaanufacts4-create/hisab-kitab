@@ -89,7 +89,7 @@ export default function OrderDetail() {
   const [restaurantName, setRestaurantName] = useState('');
   const [gst, setGst] = useState('');          // GST %
   const [discount, setDiscount] = useState(''); // Discount value
-  const [discountType, setDiscountType] = useState('flat'); // 'flat' | 'pct'
+  const [discountType, setDiscountType] = useState('pct'); // 'flat' | 'pct'
   // Start with JWT value so it works immediately on first render,
   // then backend live-check overrides it (handles toggle without re-login)
   const [canShowQrLive, setCanShowQrLive] = useState(!!user?.canShowQr);

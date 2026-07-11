@@ -41,7 +41,7 @@ router.post('/', requireRole('owner', 'cashier'), async (req, res) => {
 // PUT /api/inventory/:id  — update stock / details
 router.put('/:id', requireRole('owner', 'cashier'), async (req, res) => {
   try {
-    const { name, unit, stock, min_stock } = req.body;
+    const { name, unit, stock, min_stock, daily_consumption } = req.body;
     const [rows] = await pool.query(
       'SELECT * FROM inventory WHERE id = ? AND restaurant_id = ?',
       [req.params.id, req.restaurant_id]
@@ -49,12 +49,13 @@ router.put('/:id', requireRole('owner', 'cashier'), async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Item not found' });
     const cur = rows[0];
     await pool.query(
-      'UPDATE inventory SET name=?, unit=?, stock=?, min_stock=? WHERE id=?',
+      'UPDATE inventory SET name=?, unit=?, stock=?, min_stock=?, daily_consumption=? WHERE id=?',
       [
         name !== undefined ? name.trim() : cur.name,
         unit !== undefined ? unit.trim() : cur.unit,
         stock !== undefined ? Number(stock) : cur.stock,
         min_stock !== undefined ? Number(min_stock) : cur.min_stock,
+        daily_consumption !== undefined ? Number(daily_consumption) : cur.daily_consumption,
         req.params.id,
       ]
     );
@@ -174,6 +175,31 @@ router.delete('/recipes/:id', requireRole('owner', 'cashier'), async (req, res) 
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not delete recipe' });
+  }
+});
+
+// POST /api/inventory/apply-daily  — deduct daily_consumption from all items
+router.post('/apply-daily', requireRole('owner', 'cashier'), async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM inventory WHERE restaurant_id = ? AND daily_consumption > 0',
+      [req.restaurant_id]
+    );
+    if (!rows.length) return res.json({ applied: 0, items: [] });
+
+    const applied = [];
+    for (const item of rows) {
+      const newStock = Math.max(0, item.stock - item.daily_consumption);
+      await pool.query(
+        'UPDATE inventory SET stock = ? WHERE id = ? AND restaurant_id = ?',
+        [newStock, item.id, req.restaurant_id]
+      );
+      applied.push({ id: item.id, name: item.name, unit: item.unit, deducted: item.daily_consumption, newStock });
+    }
+    res.json({ applied: applied.length, items: applied });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not apply daily consumption' });
   }
 });
 

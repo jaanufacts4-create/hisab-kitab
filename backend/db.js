@@ -205,6 +205,11 @@ async function initDb() {
     await client.execute('ALTER TABLE orders ADD COLUMN ready_at TEXT NULL');
   } catch (e) { /* already exists */ }
 
+  // Migration 9: daily_consumption on inventory (for end-of-day deduction)
+  try {
+    await client.execute('ALTER TABLE inventory ADD COLUMN daily_consumption REAL NOT NULL DEFAULT 0');
+  } catch (e) { /* already exists */ }
+
   // Migration 8: qty_unit on menu_recipes (unit-aware inventory deduction)
   try {
     await client.execute("ALTER TABLE menu_recipes ADD COLUMN qty_unit TEXT NOT NULL DEFAULT ''");

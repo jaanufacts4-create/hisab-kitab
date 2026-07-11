@@ -63,6 +63,11 @@ export default function Inventory() {
 
   useEffect(() => { load(); }, [load]);
 
+  async function applyDaily() {
+    await api.post('/inventory/apply-daily');
+    await load();
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-ledger-paper flex items-center justify-center text-ledger-inkSoft">
       Loading…
@@ -97,7 +102,7 @@ export default function Inventory() {
       </div>
 
       <div className="px-4 pt-4">
-        {tab === 'Stock'   && <StockTab items={items} />}
+        {tab === 'Stock'   && <StockTab items={items} onApplyDaily={applyDaily} />}
         {tab === 'Items'   && <ItemsTab items={items} onRefresh={load} />}
         {tab === 'Recipes' && <RecipesTab recipes={recipes} menuItems={menuItems} items={items} onRefresh={load} />}
       </div>
@@ -105,8 +110,34 @@ export default function Inventory() {
   );
 }
 
-function StockTab({ items }) {
+function StockTab({ items, onApplyDaily }) {
+  const [applying, setApplying] = useState(false);
+  const [preview, setPreview]   = useState(null); // null | { items: [...] }
+  const [applyMsg, setApplyMsg] = useState('');
   const low = items.filter(i => i.min_stock > 0 && i.stock <= i.min_stock);
+  const hasDaily = items.some(i => i.daily_consumption > 0);
+
+  async function loadPreview() {
+    // Show what WILL be deducted without actually doing it
+    const toDeduct = items.filter(i => i.daily_consumption > 0).map(i => ({
+      name: i.name, unit: i.unit,
+      deducted: i.daily_consumption,
+      newStock: Math.max(0, i.stock - i.daily_consumption),
+    }));
+    setPreview({ items: toDeduct });
+  }
+
+  async function confirmApply() {
+    setApplying(true); setApplyMsg('');
+    try {
+      await onApplyDaily();
+      setPreview(null);
+      setApplyMsg('✅ Applied! Stock updated.');
+      setTimeout(() => setApplyMsg(''), 3000);
+    } catch (e) {
+      setApplyMsg('❌ ' + (e.response?.data?.error || 'Failed'));
+    } finally { setApplying(false); }
+  }
 
   if (!items.length) {
     return <EmptyState text="No raw materials added yet. Go to Items tab to add stock." />;
@@ -114,6 +145,47 @@ function StockTab({ items }) {
 
   return (
     <div className="space-y-4">
+      {/* Apply daily consumption */}
+      {hasDaily && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-sm font-semibold text-amber-800">📅 End of Day Deduction</p>
+            {!preview && (
+              <button onClick={loadPreview}
+                className="text-xs font-semibold px-3 py-1.5 bg-amber-600 text-white rounded-lg">
+                Apply Today's Usage
+              </button>
+            )}
+          </div>
+          {!preview && (
+            <p className="text-xs text-amber-700">
+              Deducts daily avg consumption from all items that have it set.
+            </p>
+          )}
+          {preview && (
+            <div className="mt-2 space-y-1">
+              <p className="text-xs font-medium text-amber-800 mb-1">Will deduct:</p>
+              {preview.items.map(it => (
+                <div key={it.name} className="flex justify-between text-xs text-amber-900">
+                  <span>{it.name}</span>
+                  <span>−{it.deducted} {it.unit} → {it.newStock} {it.unit} left</span>
+                </div>
+              ))}
+              <div className="flex gap-2 mt-2">
+                <button onClick={confirmApply} disabled={applying}
+                  className="flex-1 bg-amber-600 text-white text-xs font-semibold py-1.5 rounded-lg disabled:opacity-60">
+                  {applying ? 'Applying...' : '✓ Confirm'}
+                </button>
+                <button onClick={() => setPreview(null)}
+                  className="flex-1 border border-amber-300 text-amber-700 text-xs font-semibold py-1.5 rounded-lg">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          {applyMsg && <p className="text-xs mt-1 font-medium text-amber-900">{applyMsg}</p>}
+        </div>
+      )}
       {low.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-3">
           <p className="text-red-700 font-semibold text-sm mb-2">Warning: Low Stock ({low.length})</p>
@@ -156,25 +228,20 @@ function StockTab({ items }) {
 }
 
 function ItemsTab({ items, onRefresh }) {
-  const [form, setForm] = useState({ name: '', unit: 'g', stock: '', stock_unit: 'g', min_stock: '', min_unit: 'g' });
+  const [form, setForm] = useState({ name: '', unit: 'g', stock: '', stock_unit: 'g', min_stock: '', min_unit: 'g', daily_consumption: '', daily_unit: 'g' });
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
-  // Per-item custom adjust: { [id]: { qty: '1', unit: item.unit } }
-  const [adj, setAdj] = useState({});
-  const getAdj = (item) => adj[item.id] || { qty: '1', unit: item.unit };
-  function setAdjField(id, field, val) {
-    setAdj(a => ({ ...a, [id]: { ...a[id], [field]: val } }));
-  }
+
 
   function startEdit(item) {
     setEditId(item.id);
-    setForm({ name: item.name, unit: item.unit, stock: item.stock, stock_unit: item.unit, min_stock: item.min_stock, min_unit: item.unit });
+    setForm({ name: item.name, unit: item.unit, stock: item.stock, stock_unit: item.unit, min_stock: item.min_stock, min_unit: item.unit, daily_consumption: item.daily_consumption || '', daily_unit: item.unit });
   }
 
   function cancelEdit() {
     setEditId(null);
-    setForm({ name: '', unit: 'g', stock: '', stock_unit: 'g', min_stock: '', min_unit: 'g' });
+    setForm({ name: '', unit: 'g', stock: '', stock_unit: 'g', min_stock: '', min_unit: 'g', daily_consumption: '', daily_unit: 'g' });
   }
 
   async function save() {
@@ -188,6 +255,7 @@ function ItemsTab({ items, onRefresh }) {
         unit: form.unit,
         stock: convertUnit(form.stock, form.stock_unit, form.unit),
         min_stock: convertUnit(form.min_stock, form.min_unit, form.unit),
+        daily_consumption: form.daily_consumption ? convertUnit(form.daily_consumption, form.daily_unit, form.unit) : 0,
       };
       if (editId) {
         await api.put(`/inventory/${editId}`, payload);
@@ -215,17 +283,7 @@ function ItemsTab({ items, onRefresh }) {
     }
   }
 
-  async function adjustStock(item, direction) {
-    const a = getAdj(item);
-    const deltaInPrimaryUnit = convertUnit(Number(a.qty) || 0, a.unit, item.unit);
-    const newStock = Math.max(0, Number(item.stock) + direction * deltaInPrimaryUnit);
-    try {
-      await api.put(`/inventory/${item.id}`, { stock: newStock });
-      await onRefresh();
-    } catch {
-      // ignore
-    }
-  }
+
 
   return (
     <div className="space-y-4">
@@ -287,6 +345,25 @@ function ItemsTab({ items, onRefresh }) {
           </select>
         </div>
 
+        {/* Daily avg consumption */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ledger-inkSoft w-24 shrink-0">Daily avg</span>
+          <input
+            type="number"
+            className="flex-1 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ledger-red"
+            placeholder="0 = not set"
+            value={form.daily_consumption}
+            onChange={e => setForm(f => ({ ...f, daily_consumption: e.target.value }))}
+          />
+          <select
+            className="w-16 border border-ledger-red/20 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red"
+            value={form.daily_unit}
+            onChange={e => setForm(f => ({ ...f, daily_unit: e.target.value }))}
+          >
+            {compatibleUnits(form.unit).map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+
         {msg && <p className="text-red-600 text-xs">{msg}</p>}
 
         <div className="flex gap-2">
@@ -316,41 +393,15 @@ function ItemsTab({ items, onRefresh }) {
               <div>
                 <p className="font-medium text-sm text-ledger-ink">{item.name}</p>
                 <p className="text-xs text-ledger-inkSoft">Min: {item.min_stock} {item.unit}</p>
+                {item.daily_consumption > 0 && (
+                  <p className="text-xs text-amber-600">Daily: −{item.daily_consumption} {item.unit}</p>
+                )}
               </div>
               <span className={`text-sm font-semibold ${item.stock <= item.min_stock && item.min_stock > 0 ? 'text-red-600' : 'text-green-700'}`}>
                   {item.stock} {item.unit}
                 </span>
             </div>
-            {/* Custom adjust row */}
-            <div className="flex items-center gap-1.5 mt-2">
-              <button
-                onClick={() => adjustStock(item, -1)}
-                className="px-3 py-1.5 rounded-lg border border-red-200 text-red-500 text-xs font-bold"
-              >
-                − Use
-              </button>
-              <input
-                type="number"
-                min="0"
-                className="w-16 border border-ledger-red/20 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ledger-red"
-                value={getAdj(item).qty}
-                onChange={e => setAdjField(item.id, 'qty', e.target.value)}
-              />
-              <select
-                className="w-14 border border-ledger-red/20 rounded-lg px-1 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red"
-                value={getAdj(item).unit || item.unit}
-                onChange={e => setAdjField(item.id, 'unit', e.target.value)}
-              >
-                {compatibleUnits(item.unit).map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-              <button
-                onClick={() => adjustStock(item, +1)}
-                className="px-3 py-1.5 rounded-lg border border-green-300 text-green-700 text-xs font-bold"
-              >
-                + Add
-              </button>
-            </div>
-            <div className="flex gap-2 mt-1.5">
+            <div className="flex gap-2 mt-2">
               <button
                 onClick={() => startEdit(item)}
                 className="text-xs text-ledger-red border border-ledger-red/30 px-3 py-1 rounded-lg"

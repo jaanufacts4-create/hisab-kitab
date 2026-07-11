@@ -16,7 +16,7 @@ function padLeft(s, len) { s = String(s); return s.length >= len ? s.slice(0, le
 // Rendered into the .thermal-receipt block, which is hidden on screen and
 // on normal print, and only shown when printing on narrow (<=80mm) paper —
 // see the @media print rules in index.css.
-function buildThermalReceipt(order, restaurantName, discountAmt, gstAmt, finalTotal) {
+function buildThermalReceipt(order, restaurantName, discountAmt, gstAmt, finalTotal, discountType, discountRate, gstRate) {
   const W = 32;
   const rule = '-'.repeat(W);
   const center = (s) => {
@@ -46,11 +46,11 @@ function buildThermalReceipt(order, restaurantName, discountAmt, gstAmt, finalTo
   lines.push(rule);
   if (discountAmt > 0) {
     lines.push(padRight('Subtotal', W - 8) + padLeft(Math.round(order.total), 8));
-    const discLabel = discountType === 'pct' ? `Discount@${discount}%` : 'Discount';
+    const discLabel = discountType === 'pct' ? `Discount @${discountRate}%` : 'Discount';
     lines.push(padRight(discLabel, W - 8) + padLeft('-' + Math.round(discountAmt), 8));
   }
   if (gstAmt > 0) {
-    lines.push(padRight(`GST@${gst}%`, W - 8) + padLeft('+' + Math.round(gstAmt), 8));
+    lines.push(padRight(`GST @${gstRate}%`, W - 8) + padLeft('+' + Math.round(gstAmt), 8));
   }
   lines.push(rule);
   lines.push(padRight('TOTAL', W - 8) + padLeft(Math.round(finalTotal), 8));
@@ -360,7 +360,7 @@ export default function OrderDetail() {
             )}
             {gstAmt > 0 && (
               <div className="flex justify-between text-sm text-ledger-inkSoft">
-                <span>GST ({gst}%)</span><span className="figure">+ {rupee(gstAmt)}</span>
+                <span>GST @{gst}%</span><span className="figure">+ {rupee(gstAmt)}</span>
               </div>
             )}
             <div className="flex justify-between items-center pt-1">
@@ -390,7 +390,7 @@ export default function OrderDetail() {
             when printing on narrow (<=80mm) receipt paper. See index.css. */}
         <div className="thermal-receipt">
           <pre style={{ margin: 0, fontFamily: "'Courier New', Courier, monospace" }}>
-            {buildThermalReceipt(order, restaurantName || user?.restaurantName, discountAmt, gstAmt, finalTotal)}
+            {buildThermalReceipt(order, restaurantName || user?.restaurantName, discountAmt, gstAmt, finalTotal, discountType, discount, gst)}
           </pre>
         </div>
 

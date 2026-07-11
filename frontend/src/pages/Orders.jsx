@@ -48,11 +48,12 @@ function KitchenTimer({ acceptedAt, readyAt, status }) {
 
 
 const STATUS_COLOR = {
-  open:       'bg-yellow-50 text-yellow-700 border-yellow-200',
-  preparing:  'bg-blue-50 text-blue-700 border-blue-200',
-  ready:      'bg-green-50 text-green-700 border-green-200',
-  billed:     'bg-gray-50 text-gray-500 border-gray-200',
-  cancelled:  'bg-red-50 text-red-400 border-red-200',
+  open:            'bg-yellow-50 text-yellow-700 border-yellow-200',
+  preparing:       'bg-blue-50 text-blue-700 border-blue-200',
+  ready:           'bg-green-50 text-green-700 border-green-200',
+  payment_pending: 'bg-orange-50 text-orange-700 border-orange-300',
+  billed:          'bg-gray-50 text-gray-500 border-gray-200',
+  cancelled:       'bg-red-50 text-red-400 border-red-200',
 };
 
 const ITEM_STATUS_COLOR = {
@@ -155,11 +156,12 @@ export default function Orders() {
   }
 
   const STATUS_LABEL = {
-    open:      lang === 'hi' ? 'Naya' : 'New',
-    preparing: lang === 'hi' ? 'Ban Raha Hai' : 'Preparing',
-    ready:     lang === 'hi' ? '✓ Ready' : '✓ Ready',
-    billed:    lang === 'hi' ? 'Bill Ho Gaya' : 'Billed',
-    cancelled: lang === 'hi' ? 'Cancel' : 'Cancelled',
+    open:            lang === 'hi' ? 'Naya' : 'New',
+    preparing:       lang === 'hi' ? 'Ban Raha Hai' : 'Preparing',
+    ready:           lang === 'hi' ? '✓ Ready' : '✓ Ready',
+    payment_pending: lang === 'hi' ? '💰 Payment Pending' : '💰 Payment Pending',
+    billed:          lang === 'hi' ? 'Bill Ho Gaya' : 'Billed',
+    cancelled:       lang === 'hi' ? 'Cancel' : 'Cancelled',
   };
 
   const ITEM_STATUS_LABEL = {
@@ -293,6 +295,12 @@ export default function Orders() {
                     <Link to={`/orders/${o.id}`} onClick={e => e.stopPropagation()}
                       className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-ledger-red text-white text-center">
                       {lang === 'hi' ? '💳 Bill Banao' : '💳 Create Bill'}
+                    </Link>
+                  )}
+                  {o.status === 'payment_pending' && (user?.role === 'owner' || user?.role === 'cashier') && (
+                    <Link to={`/orders/${o.id}`} onClick={e => e.stopPropagation()}
+                      className="flex-1 py-1.5 text-xs font-bold rounded-lg bg-orange-500 text-white text-center animate-pulse">
+                      {lang === 'hi' ? '✅ Payment Confirm Karo' : '✅ Confirm Payment'}
                     </Link>
                   )}
                   {user?.role !== 'kitchen' && (

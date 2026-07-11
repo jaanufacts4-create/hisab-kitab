@@ -177,7 +177,7 @@ export default function Login() {
                 <button key={s.id} onClick={() => setSelectedStaff(s)}
                   className="w-full text-left px-3.5 py-2.5 rounded-lg border border-ledger-red/20 bg-white hover:bg-ledger-paperDark">
                   <span className="font-medium">{s.name}</span>
-                  <span className="text-xs text-ledger-inkSoft ml-2 capitalize">({s.role})</span>
+                  <span className="text-xs text-ledger-inkSoft ml-2 capitalize">({s.role === 'waiter' ? 'Captain' : s.role})</span>
                 </button>
               ))}
             </div>

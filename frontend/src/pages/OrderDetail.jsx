@@ -61,11 +61,12 @@ function buildThermalReceipt(order, restaurantName, discountAmt, gstAmt, finalTo
 }
 
 const STATUS_STYLE = {
-  open:       { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200' },
-  preparing:  { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200'  },
-  ready:      { bg: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200' },
-  billed:     { bg: 'bg-gray-50',   text: 'text-gray-500',   border: 'border-gray-200'  },
-  cancelled:  { bg: 'bg-red-50',    text: 'text-red-400',    border: 'border-red-200'   },
+  open:            { bg: 'bg-amber-50',  text: 'text-amber-700',  border: 'border-amber-200'  },
+  preparing:       { bg: 'bg-blue-50',   text: 'text-blue-700',   border: 'border-blue-200'   },
+  ready:           { bg: 'bg-green-50',  text: 'text-green-700',  border: 'border-green-200'  },
+  payment_pending: { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-300' },
+  billed:          { bg: 'bg-gray-50',   text: 'text-gray-500',   border: 'border-gray-200'   },
+  cancelled:       { bg: 'bg-red-50',    text: 'text-red-400',    border: 'border-red-200'    },
 };
 
 const ITEM_STATUS_COLOR = {
@@ -178,11 +179,12 @@ export default function OrderDetail() {
   const finalTotal = afterDiscount + gstAmt;
 
   const STATUS_LABEL = {
-    open:      lang === 'hi' ? 'Naya Order' : 'New Order',
-    preparing: lang === 'hi' ? 'Ban Raha Hai' : 'Preparing',
-    ready:     lang === 'hi' ? 'Ready Hai' : 'Ready',
-    billed:    lang === 'hi' ? 'Bill Ho Gaya' : 'Billed',
-    cancelled: lang === 'hi' ? 'Cancel' : 'Cancelled',
+    open:            lang === 'hi' ? 'Naya Order' : 'New Order',
+    preparing:       lang === 'hi' ? 'Ban Raha Hai' : 'Preparing',
+    ready:           lang === 'hi' ? 'Ready Hai' : 'Ready',
+    payment_pending: lang === 'hi' ? '💰 Payment Pending' : '💰 Payment Pending',
+    billed:          lang === 'hi' ? 'Bill Ho Gaya' : 'Billed',
+    cancelled:       lang === 'hi' ? 'Cancel' : 'Cancelled',
   };
 
   const ITEM_STATUS_LABEL = {
@@ -208,7 +210,8 @@ export default function OrderDetail() {
   // Same condition for both owner and waiter — same QR, same billing
   const allAtLeastReady = !hasOpen && !hasPreparing;
   const canBill = !['billed', 'cancelled'].includes(order.status) &&
-    allAtLeastReady && (isOwnerOrCashier || (isWaiter && canShowQrLive));
+    (allAtLeastReady || order.status === 'payment_pending') &&
+    (isOwnerOrCashier || (isWaiter && canShowQrLive && order.status !== 'payment_pending'));
   // Allow adding items right up until the bill is actually generated, but
   // not for kitchen staff — only owner/cashier/waiter can add items.
   const canAddItems = ['open','preparing','ready'].includes(order.status) &&
@@ -219,6 +222,14 @@ export default function OrderDetail() {
       <Header title={order.table_no ? `Table ${order.table_no}` : `Order #${order.id}`} />
 
       <div className="px-4 mt-4 space-y-3">
+
+        {/* Payment pending alert for owner */}
+        {order.status === 'payment_pending' && isOwnerOrCashier && (
+          <div className="print-hidden bg-orange-50 border-2 border-orange-400 rounded-xl px-4 py-3 animate-pulse">
+            <p className="text-orange-700 font-bold text-sm">💰 Captain ne payment confirm ki hai!</p>
+            <p className="text-orange-600 text-xs mt-0.5">Neeche payment method select karke confirm karo.</p>
+          </div>
+        )}
 
         {/* Status bar */}
         <div className={`print-hidden flex items-center justify-between px-4 py-2.5 rounded-xl border ${s.bg} ${s.border}`}>
@@ -482,12 +493,24 @@ export default function OrderDetail() {
             <p className="text-xs text-ledger-inkSoft mb-4">
               Customer ko yeh QR scan karne do apne UPI app se
             </p>
-            <button
-              onClick={async () => { setShowQR(false); await pay('upi'); }}
-              disabled={submitting}
-              className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm mb-2 disabled:opacity-60">
-              ✅ Payment Mil Gayi — Confirm
-            </button>
+            {isWaiter ? (
+              <button
+                onClick={async () => {
+                  setShowQR(false);
+                  await updateStatus('payment_pending');
+                }}
+                disabled={submitting}
+                className="w-full py-3 rounded-xl bg-orange-500 text-white font-bold text-sm mb-2 disabled:opacity-60">
+                📲 Payment Mili — Owner Ko Notify Karo
+              </button>
+            ) : (
+              <button
+                onClick={async () => { setShowQR(false); await pay('upi'); }}
+                disabled={submitting}
+                className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm mb-2 disabled:opacity-60">
+                ✅ Payment Mil Gayi — Confirm
+              </button>
+            )}
             <button onClick={() => setShowQR(false)}
               className="w-full py-2 rounded-xl border border-gray-200 text-ledger-inkSoft text-sm">
               Cancel

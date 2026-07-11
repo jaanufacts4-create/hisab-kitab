@@ -250,7 +250,7 @@ router.get('/:id', async (req, res) => {
 // left alone — only items still sitting at the previous stage move.
 router.put('/:id/status', async (req, res) => {
   const { status } = req.body;
-  if (!['preparing','ready'].includes(status)) {
+  if (!['preparing','ready','payment_pending'].includes(status)) {
     return res.status(400).json({ error: 'Invalid status' });
   }
   const [rows] = await pool.query(
@@ -264,11 +264,11 @@ router.put('/:id/status', async (req, res) => {
     "UPDATE order_items SET status=? WHERE order_id=? AND status=?",
     [status, req.params.id, fromItemStatus]
   );
-  const tsCol = status === 'preparing' ? 'accepted_at' : 'ready_at';
-  await pool.query(
-    `UPDATE orders SET status=?, ${tsCol}=datetime('now') WHERE id=? AND restaurant_id=?`,
-    [status, req.params.id, req.restaurant_id]
-  );
+  const tsCol = status === 'preparing' ? 'accepted_at' : status === 'ready' ? 'ready_at' : null;
+  const updateSql = tsCol
+    ? `UPDATE orders SET status=?, ${tsCol}=datetime('now') WHERE id=? AND restaurant_id=?`
+    : 'UPDATE orders SET status=? WHERE id=? AND restaurant_id=?';
+  await pool.query(updateSql, [status, req.params.id, req.restaurant_id]);
   res.json({ ok: true, status });
 });
 

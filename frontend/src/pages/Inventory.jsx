@@ -7,11 +7,9 @@ const TABS = ['Stock', 'Items', 'Recipes'];
 
 export default function Inventory() {
   const [tab, setTab] = useState('Stock');
-
-  // ---- shared data ----
-  const [items, setItems] = useState([]);     // inventory rows
-  const [recipes, setRecipes] = useState([]); // menu_recipes rows (all)
-  const [menuItems, setMenuItems] = useState([]); // menu items for recipe linking
+  const [items, setItems] = useState([]);
+  const [recipes, setRecipes] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
@@ -54,7 +52,6 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Tab bar */}
       <div className="flex border-b-2 border-ledger-red/20 mx-4 mt-4">
         {TABS.map(t => (
           <button
@@ -80,10 +77,8 @@ export default function Inventory() {
   );
 }
 
-/* ---- Stock overview ---- */
 function StockTab({ items }) {
-  const low = items.filter(i => i.stock <= i.min_stock && i.min_stock > 0);
-  const ok  = items.filter(i => i.stock > i.min_stock || i.min_stock === 0);
+  const low = items.filter(i => i.min_stock > 0 && i.stock <= i.min_stock);
 
   if (!items.length) {
     return <EmptyState text="No raw materials added yet. Go to Items tab to add stock." />;
@@ -93,11 +88,11 @@ function StockTab({ items }) {
     <div className="space-y-4">
       {low.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-          <p className="text-red-700 font-semibold text-sm mb-2">⚠️ Low Stock ({low.length})</p>
+          <p className="text-red-700 font-semibold text-sm mb-2">Warning: Low Stock ({low.length})</p>
           {low.map(i => (
             <div key={i.id} className="flex justify-between text-sm py-1">
               <span className="text-red-800 font-medium">{i.name}</span>
-              <span className="text-red-600">{i.stock} {i.unit} <span className="text-red-400">(min {i.min_stock})</span></span>
+              <span className="text-red-600">{i.stock} {i.unit} (min {i.min_stock})</span>
             </div>
           ))}
         </div>
@@ -132,7 +127,6 @@ function StockTab({ items }) {
   );
 }
 
-/* ---- Items management ---- */
 function ItemsTab({ items, onRefresh }) {
   const [form, setForm] = useState({ name: '', unit: 'g', stock: '', min_stock: '' });
   const [editId, setEditId] = useState(null);
@@ -151,7 +145,8 @@ function ItemsTab({ items, onRefresh }) {
 
   async function save() {
     if (!form.name.trim()) return setMsg('Name required');
-    setSaving(true); setMsg('');
+    setSaving(true);
+    setMsg('');
     try {
       if (editId) {
         await api.put(`/inventory/${editId}`, form);
@@ -164,11 +159,13 @@ function ItemsTab({ items, onRefresh }) {
       const msg = e.response?.data?.error || e.message || 'Save failed';
       const status = e.response?.status || 'network';
       setMsg(`Error ${status}: ${msg}`);
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function del(id) {
-    if (!confirm('Delete this item? This also removes its recipes.')) return;
+    if (!confirm('Delete this item? Its recipes will also be removed.')) return;
     try {
       await api.delete(`/inventory/${id}`);
       await onRefresh();
@@ -182,12 +179,13 @@ function ItemsTab({ items, onRefresh }) {
     try {
       await api.put(`/inventory/${item.id}`, { stock: newStock });
       await onRefresh();
-    } catch { /* ignore */ }
+    } catch {
+      // ignore
+    }
   }
 
   return (
     <div className="space-y-4">
-      {/* Add / Edit form */}
       <div className="bg-white border border-ledger-red/20 rounded-xl p-4 space-y-3">
         <p className="font-semibold text-sm text-ledger-ink">{editId ? 'Edit Item' : 'Add Raw Material'}</p>
 
@@ -200,7 +198,7 @@ function ItemsTab({ items, onRefresh }) {
 
         <div className="flex gap-2">
           <input
-            className="w-24 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ledger-red"
+            className="w-20 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ledger-red"
             placeholder="Unit"
             value={form.unit}
             onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
@@ -229,17 +227,19 @@ function ItemsTab({ items, onRefresh }) {
             disabled={saving}
             className="flex-1 bg-ledger-red text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
           >
-            {saving ? 'Saving…' : editId ? 'Update' : 'Add'}
+            {saving ? 'Saving...' : editId ? 'Update' : 'Add'}
           </button>
           {editId && (
-            <button onClick={cancelEdit} className="px-4 py-2 rounded-lg border border-ledger-red/30 text-sm text-ledger-inkSoft">
+            <button
+              onClick={cancelEdit}
+              className="px-4 py-2 rounded-lg border border-ledger-red/30 text-sm text-ledger-inkSoft"
+            >
               Cancel
             </button>
           )}
         </div>
       </div>
 
-      {/* Items list */}
       {!items.length
         ? <EmptyState text="No items yet. Add your first raw material above." />
         : items.map(item => (
@@ -253,25 +253,33 @@ function ItemsTab({ items, onRefresh }) {
                 <button
                   onClick={() => adjustStock(item, -10)}
                   className="w-7 h-7 rounded-full border border-ledger-red/20 text-ledger-inkSoft text-sm flex items-center justify-center"
-                >−</button>
+                >
+                  -
+                </button>
                 <span className={`text-sm font-semibold w-20 text-center ${item.stock <= item.min_stock && item.min_stock > 0 ? 'text-red-600' : 'text-green-700'}`}>
                   {item.stock} {item.unit}
                 </span>
                 <button
                   onClick={() => adjustStock(item, 10)}
                   className="w-7 h-7 rounded-full border border-ledger-red/20 text-ledger-inkSoft text-sm flex items-center justify-center"
-                >+</button>
+                >
+                  +
+                </button>
               </div>
             </div>
             <div className="flex gap-2 mt-2">
               <button
                 onClick={() => startEdit(item)}
                 className="text-xs text-ledger-red border border-ledger-red/30 px-3 py-1 rounded-lg"
-              >Edit</button>
+              >
+                Edit
+              </button>
               <button
                 onClick={() => del(item.id)}
                 className="text-xs text-red-500 border border-red-200 px-3 py-1 rounded-lg"
-              >Delete</button>
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))
@@ -280,7 +288,6 @@ function ItemsTab({ items, onRefresh }) {
   );
 }
 
-/* ---- Recipes ---- */
 function RecipesTab({ recipes, menuItems, items, onRefresh }) {
   const [selectedMenu, setSelectedMenu] = useState('');
   const [form, setForm] = useState({ inventory_id: '', qty_per_serving: '' });
@@ -292,7 +299,8 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
   async function addIngredient() {
     if (!selectedMenu) return setMsg('Select a dish first');
     if (!form.inventory_id || !form.qty_per_serving) return setMsg('Fill all fields');
-    setSaving(true); setMsg('');
+    setSaving(true);
+    setMsg('');
     try {
       await api.post('/inventory/recipes', {
         menu_item_id: Number(selectedMenu),
@@ -302,10 +310,12 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
       setForm({ inventory_id: '', qty_per_serving: '' });
       await onRefresh();
     } catch (e) {
-      const msg = e.response?.data?.error || e.message || 'Save failed';
+      const errMsg = e.response?.data?.error || e.message || 'Save failed';
       const status = e.response?.status || 'network';
-      setMsg(`Error ${status}: ${msg}`);
-    } finally { setSaving(false); }
+      setMsg(`Error ${status}: ${errMsg}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function delRecipe(id) {
@@ -327,7 +337,6 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
 
   return (
     <div className="space-y-4">
-      {/* Dish selector */}
       <div className="bg-white border border-ledger-red/20 rounded-xl p-4 space-y-3">
         <p className="font-semibold text-sm text-ledger-ink">Link Ingredients to a Dish</p>
 
@@ -336,7 +345,7 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
           value={selectedMenu}
           onChange={e => { setSelectedMenu(e.target.value); setMsg(''); }}
         >
-          <option value="">— Select dish —</option>
+          <option value="">Select dish</option>
           {menuItems.map(m => (
             <option key={m.id} value={m.id}>{m.name}</option>
           ))}
@@ -350,7 +359,7 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
                 value={form.inventory_id}
                 onChange={e => setForm(f => ({ ...f, inventory_id: e.target.value }))}
               >
-                <option value="">— Ingredient —</option>
+                <option value="">Select ingredient</option>
                 {items.map(i => (
                   <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
                 ))}
@@ -358,7 +367,7 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
               <input
                 type="number"
                 className="w-24 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ledger-red"
-                placeholder="Qty/serving"
+                placeholder="Qty"
                 value={form.qty_per_serving}
                 onChange={e => setForm(f => ({ ...f, qty_per_serving: e.target.value }))}
               />
@@ -371,10 +380,9 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
               disabled={saving}
               className="w-full bg-ledger-red text-white py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
             >
-              {saving ? 'Saving…' : '+ Add Ingredient'}
+              {saving ? 'Saving...' : '+ Add Ingredient'}
             </button>
 
-            {/* Existing ingredients for selected dish */}
             {menuRecipes.length > 0 && (
               <div className="border-t border-ledger-red/10 pt-3 space-y-2">
                 <p className="text-xs text-ledger-inkSoft font-medium">Current recipe:</p>
@@ -386,7 +394,9 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
                       <button
                         onClick={() => delRecipe(r.id)}
                         className="text-red-400 text-xs border border-red-200 px-2 py-0.5 rounded"
-                      >×</button>
+                      >
+                        x
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -396,20 +406,37 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
         )}
       </div>
 
-      {/* All recipes grouped by dish */}
-      {!selectedMenu && menuItems
-        .filter(m => recipes.some(r => r.menu_item_id === m.id))
-        .map(m => {
-          const mrs = recipes.filter(r => r.menu_item_id === m.id);
-          return (
-            <div key={m.id} className="bg-white border border-ledger-red/10 rounded-xl p-3">
-              <p
-                className="font-medium text-sm text-ledger-red mb-2 cursor-pointer"
-                onClick={() => setSelectedMenu(String(m.id))}
-              >
-                {m.name}
-              </p>
-              <div className="space-y-1">
-                {mrs.map(r => (
-                  <div key={r.id} className="flex justify-between text-xs text-ledger-inkSoft">
-     
+      {!selectedMenu && menuItems.filter(m => recipes.some(r => r.menu_item_id === m.id)).map(m => {
+        const mrs = recipes.filter(r => r.menu_item_id === m.id);
+        return (
+          <div key={m.id} className="bg-white border border-ledger-red/10 rounded-xl p-3">
+            <p
+              className="font-medium text-sm text-ledger-red mb-2 cursor-pointer"
+              onClick={() => setSelectedMenu(String(m.id))}
+            >
+              {m.name}
+            </p>
+            <div className="space-y-1">
+              {mrs.map(r => (
+                <div key={r.id} className="flex justify-between text-xs text-ledger-inkSoft">
+                  <span>{r.ingredient_name}</span>
+                  <span>{r.qty_per_serving} {r.unit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {!selectedMenu && !recipes.length && (
+        <EmptyState text="No recipes yet. Select a dish above to start linking ingredients." />
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ text }) {
+  return (
+    <div className="text-center py-12 text-ledger-inkSoft text-sm px-4">{text}</div>
+  );
+}

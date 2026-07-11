@@ -16,7 +16,7 @@ function padLeft(s, len) { s = String(s); return s.length >= len ? s.slice(0, le
 // Rendered into the .thermal-receipt block, which is hidden on screen and
 // on normal print, and only shown when printing on narrow (<=80mm) paper —
 // see the @media print rules in index.css.
-function buildThermalReceipt(order, restaurantName) {
+function buildThermalReceipt(order, restaurantName, discountAmt, gstAmt, finalTotal) {
   const W = 32;
   const rule = '-'.repeat(W);
   const center = (s) => {
@@ -44,7 +44,15 @@ function buildThermalReceipt(order, restaurantName) {
     );
   });
   lines.push(rule);
-  lines.push(padRight('TOTAL', W - 8) + padLeft(Math.round(order.total), 8));
+  if (discountAmt > 0) {
+    lines.push(padRight('Subtotal', W - 8) + padLeft(Math.round(order.total), 8));
+    lines.push(padRight('Discount', W - 8) + padLeft('-' + Math.round(discountAmt), 8));
+  }
+  if (gstAmt > 0) {
+    lines.push(padRight('GST', W - 8) + padLeft('+' + Math.round(gstAmt), 8));
+  }
+  lines.push(rule);
+  lines.push(padRight('TOTAL', W - 8) + padLeft(Math.round(finalTotal), 8));
   if (order.payment_mode) lines.push(`Paid via: ${order.payment_mode.toUpperCase()}`);
   lines.push(rule);
   lines.push(center('Thank You! Visit Again'));
@@ -77,6 +85,10 @@ export default function OrderDetail() {
   const [upiId, setUpiId] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [showQR, setShowQR] = useState(false);
+  const [restaurantName, setRestaurantName] = useState('');
+  const [gst, setGst] = useState('');          // GST %
+  const [discount, setDiscount] = useState(''); // Discount value
+  const [discountType, setDiscountType] = useState('flat'); // 'flat' | 'pct'
   // Start with JWT value so it works immediately on first render,
   // then backend live-check overrides it (handles toggle without re-login)
   const [canShowQrLive, setCanShowQrLive] = useState(!!user?.canShowQr);
@@ -104,6 +116,7 @@ export default function OrderDetail() {
       api.get('/restaurant/me').then(({ data }) => {
         if (data.upi_id) setUpiId(data.upi_id);
         if (data.can_show_qr !== undefined) setCanShowQrLive(!!data.can_show_qr);
+        if (data.name) setRestaurantName(data.name);
       }).catch(() => {});
     }
   }, []);
@@ -115,7 +128,7 @@ export default function OrderDetail() {
         setError(lang === 'hi' ? 'Khata ke liye phone number zaroori hai' : 'Phone number required for credit');
         setSubmitting(false); return;
       }
-      await api.put(`/orders/${id}/payment`, { mode, amount: order.total });
+      await api.put(`/orders/${id}/payment`, { mode, amount: finalTotal });
       navigate('/orders');
     } catch (err) {
       setError(err.response?.data?.error || 'Payment failed');
@@ -153,6 +166,15 @@ export default function OrderDetail() {
   }
 
   if (!order) return <div className="min-h-screen ledger-bg" />;
+
+  // GST & Discount calculations
+  const subtotal = order.total;
+  const discountAmt = discount
+    ? (discountType === 'pct' ? subtotal * Number(discount) / 100 : Number(discount))
+    : 0;
+  const afterDiscount = Math.max(0, subtotal - discountAmt);
+  const gstAmt = gst ? afterDiscount * Number(gst) / 100 : 0;
+  const finalTotal = afterDiscount + gstAmt;
 
   const STATUS_LABEL = {
     open:      lang === 'hi' ? 'Naya Order' : 'New Order',
@@ -243,18 +265,21 @@ export default function OrderDetail() {
 
         {/* Itemized Bill Card */}
         <div className="card p-4">
-          {/* Print header (only shows when printing) */}
-          <div className="hidden print:block text-center mb-4 border-b border-dashed border-gray-300 pb-4">
-            <p className="font-bold text-xl">Receipt</p>
+          {/* Print header — shows restaurant name when printing */}
+          <div className="hidden print:block text-center mb-3 border-b border-dashed border-gray-300 pb-3">
+            {restaurantName && <p className="font-bold text-lg">{restaurantName}</p>}
             <p className="text-sm text-gray-600 font-semibold">Bill No: {order.id}</p>
             <p className="text-sm text-gray-600">
               {order.table_no ? `Table ${order.table_no}` : order.customer_name || `Order #${order.id}`}
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs text-gray-500">
               {parseServerDate(order.created_at).toLocaleString('en-IN')}
             </p>
           </div>
 
+          {restaurantName && (
+            <p className="text-center font-bold text-base text-ledger-ink mb-1">{restaurantName}</p>
+          )}
           <div className="flex items-center justify-between mb-3">
             <p className="font-bold text-sm uppercase tracking-wide text-ledger-red">
               🧾 {lang === 'hi' ? 'Bill / Receipt' : 'Bill / Receipt'}
@@ -288,10 +313,59 @@ export default function OrderDetail() {
             ))}
           </div>
 
-          {/* Total */}
-          <div className="border-t-2 border-ledger-red/20 mt-3 pt-3 flex justify-between items-center">
-            <span className="font-bold text-sm uppercase tracking-wide">Total</span>
-            <span className="font-display text-2xl font-bold text-ledger-red figure">{rupee(order.total)}</span>
+          {/* GST & Discount — owner/cashier only, optional */}
+          {isOwnerOrCashier && !['billed','cancelled'].includes(order.status) && (
+            <div className="border-t border-dashed border-gray-200 mt-3 pt-3 space-y-2 print-hidden">
+              <p className="text-xs font-semibold text-ledger-inkSoft uppercase tracking-wide">Optional Adjustments</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-ledger-inkSoft w-20">Discount</span>
+                <input type="number" min="0" placeholder="0"
+                  value={discount}
+                  onChange={e => setDiscount(e.target.value)}
+                  className="w-24 border border-ledger-red/20 rounded-lg px-2 py-1.5 text-sm text-right focus:outline-none focus:ring-1 focus:ring-ledger-red"
+                />
+                <select value={discountType} onChange={e => setDiscountType(e.target.value)}
+                  className="flex-1 border border-ledger-red/20 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red">
+                  <option value="flat">₹ Flat</option>
+                  <option value="pct">% Percent</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-ledger-inkSoft w-20">GST</span>
+                <select value={gst} onChange={e => setGst(e.target.value)}
+                  className="flex-1 border border-ledger-red/20 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red">
+                  <option value="">No GST</option>
+                  <option value="5">5%</option>
+                  <option value="12">12%</option>
+                  <option value="18">18%</option>
+                  <option value="28">28%</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Total breakdown */}
+          <div className="border-t-2 border-ledger-red/20 mt-3 pt-3 space-y-1">
+            {discountAmt > 0 && (
+              <div className="flex justify-between text-sm text-ledger-inkSoft">
+                <span>Subtotal</span><span className="figure">{rupee(subtotal)}</span>
+              </div>
+            )}
+            {discountAmt > 0 && (
+              <div className="flex justify-between text-sm text-green-700">
+                <span>Discount {discountType === 'pct' ? `(${discount}%)` : ''}</span>
+                <span className="figure">− {rupee(discountAmt)}</span>
+              </div>
+            )}
+            {gstAmt > 0 && (
+              <div className="flex justify-between text-sm text-ledger-inkSoft">
+                <span>GST ({gst}%)</span><span className="figure">+ {rupee(gstAmt)}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-1">
+              <span className="font-bold text-sm uppercase tracking-wide">Total</span>
+              <span className="font-display text-2xl font-bold text-ledger-red figure">{rupee(finalTotal)}</span>
+            </div>
           </div>
 
           {/* Payment info (shown when billed) */}
@@ -315,7 +389,7 @@ export default function OrderDetail() {
             when printing on narrow (<=80mm) receipt paper. See index.css. */}
         <div className="thermal-receipt">
           <pre style={{ margin: 0, fontFamily: "'Courier New', Courier, monospace" }}>
-            {buildThermalReceipt(order, user?.restaurantName)}
+            {buildThermalReceipt(order, restaurantName || user?.restaurantName, discountAmt, gstAmt, finalTotal)}
           </pre>
         </div>
 

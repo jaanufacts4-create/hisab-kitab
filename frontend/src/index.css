@@ -38,6 +38,20 @@ body {
   display: none;
 }
 
+/* Payment confirmation flash animation */
+@keyframes paymentFlash {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.75; transform: scale(1.02); }
+}
+
+.payment-flash-banner {
+  animation: paymentFlash 0.8s ease-in-out infinite;
+}
+
+.payment-flash-card {
+  animation: paymentFlash 1s ease-in-out infinite;
+}
+
 /* Thermal page size */
 @page {
   size: 72mm auto;

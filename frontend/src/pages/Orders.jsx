@@ -174,11 +174,30 @@ export default function Orders() {
   // Separate active vs done orders
   const active = orders.filter(o => !['billed','cancelled'].includes(o.status));
   const done   = orders.filter(o =>  ['billed','cancelled'].includes(o.status));
+  const pendingPayments = orders.filter(o => o.status === 'payment_pending');
 
   return (
     <div className="min-h-screen ledger-bg pb-24">
       <Header title={t('orders_title')} />
       <div className="px-4 mt-4">
+        {/* Big flashing alert for owner when captain sends payment confirmation */}
+        {pendingPayments.length > 0 && user?.role === 'owner' && (
+          <div className="payment-flash-banner mb-3 rounded-xl overflow-hidden">
+            <Link to={`/orders/${pendingPayments[0].id}`} className="block">
+              <div className="bg-red-600 text-white text-center py-4 px-4">
+                <p className="text-xl font-black tracking-wide">💰 PAYMENT CONFIRMATION</p>
+                <p className="text-base font-bold mt-1">
+                  {pendingPayments[0].table_no ? `Table ${pendingPayments[0].table_no}` : pendingPayments[0].customer_name || `Order #${pendingPayments[0].id}`}
+                </p>
+                <p className="text-sm font-semibold mt-0.5 opacity-90">Captain ne payment bheji hai — TAP KAR KE CONFIRM KARO</p>
+                {pendingPayments.length > 1 && (
+                  <p className="text-xs mt-1 opacity-80">+{pendingPayments.length - 1} aur pending</p>
+                )}
+              </div>
+            </Link>
+          </div>
+        )}
+
         <Link to="/orders/new"
           className="block text-center bg-ledger-red text-white font-medium py-3 rounded-xl mb-3">
           {t('new_order')}
@@ -219,7 +238,11 @@ export default function Orders() {
 
               return (
               <Link key={o.id} to={`/orders/${o.id}`}
-                className="block bg-white rounded-xl border border-ledger-red/15 p-3.5">
+                className={`block rounded-xl border p-3.5 ${
+                  o.status === 'payment_pending' && user?.role === 'owner'
+                    ? 'bg-red-50 border-red-400 payment-flash-card'
+                    : 'bg-white border-ledger-red/15'
+                }`}>
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="font-medium text-sm">

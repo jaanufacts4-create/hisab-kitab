@@ -17,6 +17,22 @@ function compatibleUnits(invUnit) {
   return UNIT_GROUPS[(invUnit || '').toLowerCase()] || [invUnit || 'pcs'];
 }
 
+// All primary unit options
+const ALL_UNITS = ['g', 'kg', 'ml', 'L', 'pcs'];
+
+// Convert qty from one unit to another (client-side, mirrors backend logic)
+function convertUnit(qty, fromUnit, toUnit) {
+  const n = Number(qty) || 0;
+  if (!fromUnit || fromUnit === toUnit) return n;
+  const from = fromUnit.toLowerCase();
+  const to   = toUnit.toLowerCase();
+  if (from === 'g'  && to === 'kg') return n / 1000;
+  if (from === 'kg' && to === 'g')  return n * 1000;
+  if (from === 'ml' && (to === 'l')) return n / 1000;
+  if (from === 'l'  && to === 'ml') return n * 1000;
+  return n; // incompatible — store as-is
+}
+
 export default function Inventory() {
   const [tab, setTab] = useState('Stock');
   const [items, setItems] = useState([]);
@@ -140,19 +156,19 @@ function StockTab({ items }) {
 }
 
 function ItemsTab({ items, onRefresh }) {
-  const [form, setForm] = useState({ name: '', unit: 'g', stock: '', min_stock: '' });
+  const [form, setForm] = useState({ name: '', unit: 'g', stock: '', stock_unit: 'g', min_stock: '', min_unit: 'g' });
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
 
   function startEdit(item) {
     setEditId(item.id);
-    setForm({ name: item.name, unit: item.unit, stock: item.stock, min_stock: item.min_stock });
+    setForm({ name: item.name, unit: item.unit, stock: item.stock, stock_unit: item.unit, min_stock: item.min_stock, min_unit: item.unit });
   }
 
   function cancelEdit() {
     setEditId(null);
-    setForm({ name: '', unit: 'g', stock: '', min_stock: '' });
+    setForm({ name: '', unit: 'g', stock: '', stock_unit: 'g', min_stock: '', min_unit: 'g' });
   }
 
   async function save() {
@@ -160,10 +176,17 @@ function ItemsTab({ items, onRefresh }) {
     setSaving(true);
     setMsg('');
     try {
+      // Convert stock and min_stock to the item's primary unit before saving
+      const payload = {
+        name: form.name,
+        unit: form.unit,
+        stock: convertUnit(form.stock, form.stock_unit, form.unit),
+        min_stock: convertUnit(form.min_stock, form.min_unit, form.unit),
+      };
       if (editId) {
-        await api.put(`/inventory/${editId}`, form);
+        await api.put(`/inventory/${editId}`, payload);
       } else {
-        await api.post('/inventory', form);
+        await api.post('/inventory', payload);
       }
       cancelEdit();
       await onRefresh();
@@ -208,27 +231,52 @@ function ItemsTab({ items, onRefresh }) {
           onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
         />
 
-        <div className="flex gap-2">
-          <input
-            className="w-20 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ledger-red"
-            placeholder="Unit"
+        {/* Primary unit */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ledger-inkSoft w-24 shrink-0">Primary unit</span>
+          <select
+            className="flex-1 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red"
             value={form.unit}
-            onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
-          />
+            onChange={e => setForm(f => ({ ...f, unit: e.target.value, stock_unit: e.target.value, min_unit: e.target.value }))}
+          >
+            {ALL_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        {/* Stock in hand */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ledger-inkSoft w-24 shrink-0">Stock in hand</span>
           <input
             type="number"
             className="flex-1 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ledger-red"
-            placeholder="Current stock"
+            placeholder="e.g. 10"
             value={form.stock}
             onChange={e => setForm(f => ({ ...f, stock: e.target.value }))}
           />
+          <select
+            className="w-16 border border-ledger-red/20 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red"
+            value={form.stock_unit}
+            onChange={e => setForm(f => ({ ...f, stock_unit: e.target.value }))}
+          >
+            {compatibleUnits(form.unit).map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        {/* Min stock alert */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-ledger-inkSoft w-24 shrink-0">Min stock</span>
           <input
             type="number"
             className="flex-1 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ledger-red"
-            placeholder="Min stock"
+            placeholder="e.g. 250"
             value={form.min_stock}
             onChange={e => setForm(f => ({ ...f, min_stock: e.target.value }))}
           />
+          <select
+            className="w-16 border border-ledger-red/20 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red"
+            value={form.min_unit}
+            onChange={e => setForm(f => ({ ...f, min_unit: e.target.value }))}
+          >
+            {compatibleUnits(form.unit).map(u => <option key={u} value={u}>{u}</option>)}
+          </select>
         </div>
 
         {msg && <p className="text-red-600 text-xs">{msg}</p>}

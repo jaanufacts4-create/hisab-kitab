@@ -104,4 +104,10 @@ router.put('/plan', requireRole('owner'), requireAdmin, async (req, res) => {
   if (!['trial', 'basic', 'pro'].includes(plan)) {
     return res.status(400).json({ error: 'Plan must be trial, basic, or pro' });
   }
-  // Demo switches clear any expiry so
+  // Demo switches clear any expiry so the chosen tier is immediately and
+  // fully in effect (a 'trial' picked here behaves as an unrestricted trial).
+  await pool.query('UPDATE restaurants SET plan = ?, plan_expiry = NULL WHERE id = ?', [plan, req.restaurant_id]);
+  res.json({ ok: true, plan });
+});
+
+module.exports = router;

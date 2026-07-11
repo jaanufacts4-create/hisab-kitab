@@ -67,7 +67,7 @@ export default function Settings() {
         <div className="card p-4">
           <p className="font-bold text-sm text-ledger-ink mb-1">👥 Staff</p>
           <p className="text-xs text-ledger-inkSoft mb-3">
-            Waiter, cashier, kitchen staff add karo aur unke rights manage karo
+            Captain, cashier, kitchen staff add karo aur unke rights manage karo
           </p>
           <Link to="/staff"
             className="block w-full text-center py-2.5 rounded-xl border border-ledger-red text-ledger-red text-sm font-semibold">

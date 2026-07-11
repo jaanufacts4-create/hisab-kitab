@@ -197,6 +197,14 @@ async function initDb() {
     await client.execute('ALTER TABLE orders ADD COLUMN collected_by_staff_id INTEGER NULL');
   } catch (e) { /* already exists */ }
 
+  // Migration 7: accepted_at and ready_at timestamps on orders (for kitchen timer)
+  try {
+    await client.execute('ALTER TABLE orders ADD COLUMN accepted_at TEXT NULL');
+  } catch (e) { /* already exists */ }
+  try {
+    await client.execute('ALTER TABLE orders ADD COLUMN ready_at TEXT NULL');
+  } catch (e) { /* already exists */ }
+
   // Migration 6: inventory + menu_recipes tables
   try {
     await client.execute(
@@ -266,12 +274,4 @@ const pool = {
       query: txQuery,
       // libsql already opens the transaction in client.transaction('write')
       // above, so this is just kept for API compatibility with callers.
-      beginTransaction: async function () {},
-      commit: async function () { if (active) { await tx.commit(); active = false; } },
-      rollback: async function () { if (active) { await tx.rollback(); active = false; } },
-      release: async function () { try { tx.close(); } catch (e) { /* ignore */ } },
-    };
-  },
-};
-
-module.exports = pool;
+      beginTr

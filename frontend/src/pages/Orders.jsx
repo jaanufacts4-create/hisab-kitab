@@ -10,6 +10,42 @@ import { parseServerDate } from '../utils/date';
 import { playNewOrderTone, playReadyTone } from '../utils/sound';
 
 function rupee(n) { return `₹${Number(n || 0).toLocaleString('en-IN')}`; }
+// Live kitchen timer — counts up from accepted_at.
+// When status is 'ready' AND 2+ min passed since ready_at → red + flash.
+function KitchenTimer({ acceptedAt, readyAt, status }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!acceptedAt) return null;
+
+  const startMs = new Date(acceptedAt.includes('Z') ? acceptedAt : acceptedAt + 'Z').getTime();
+  const elapsedSec = Math.floor((now - startMs) / 1000);
+  const mins = Math.floor(elapsedSec / 60);
+  const secs = elapsedSec % 60;
+  const display = `${mins}:${String(secs).padStart(2, '0')}`;
+
+  const readyMs = readyAt ? new Date(readyAt.includes('Z') ? readyAt : readyAt + 'Z').getTime() : null;
+  const overdueReady = status === 'ready' && readyMs && (now - readyMs) > 2 * 60 * 1000;
+
+  if (overdueReady) {
+    return (
+      <span className="text-xs font-bold text-red-600 animate-pulse">
+        ⚠ Ready {display}
+      </span>
+    );
+  }
+
+  const color = status === 'ready' ? 'text-green-600' : 'text-blue-600';
+  return (
+    <span className={`text-xs font-semibold tabular-nums ${color}`}>
+      ⏱ {display}
+    </span>
+  );
+}
+
 
 const STATUS_COLOR = {
   open:       'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -200,6 +236,13 @@ export default function Orders() {
                     </span>
                   </div>
                 </div>
+
+                {/* Kitchen timer */}
+                {['preparing','ready'].includes(o.status) && (
+                  <div className="mb-1.5">
+                    <KitchenTimer acceptedAt={o.accepted_at} readyAt={o.ready_at} status={o.status} />
+                  </div>
+                )}
 
                 {/* Per-item status + timestamp — kitchen/waiter need to know
                     WHAT to cook/serve and which batch is at which stage, not

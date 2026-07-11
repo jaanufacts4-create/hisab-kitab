@@ -59,7 +59,7 @@ export default function Staff() {
   }
 
   const ROLE_LABELS = {
-    waiter:  lang === 'hi' ? 'Waiter' : 'Waiter',
+    waiter:  lang === 'hi' ? 'Captain' : 'Captain',
     cashier: lang === 'hi' ? 'Cashier' : 'Cashier',
     kitchen: lang === 'hi' ? 'Kitchen' : 'Kitchen',
     owner:   lang === 'hi' ? 'Malik' : 'Owner',
@@ -89,8 +89,8 @@ export default function Staff() {
             </p>
             <p className="text-xs text-ledger-inkSoft mb-3">
               {lang === 'hi'
-                ? 'Trial plan mein sirf owner login chalta hai. Cashier/Waiter add karne ke liye Basic ya Pro plan chahiye.'
-                : 'Trial only supports the owner login. Adding cashier/waiter staff needs the Basic or Pro plan.'}
+                ? 'Trial plan mein sirf owner login chalta hai. Cashier/Captain add karne ke liye Basic ya Pro plan chahiye.'
+                : 'Trial only supports the owner login. Adding cashier/captain staff needs the Basic or Pro plan.'}
             </p>
             <Link to="/plans" className="block w-full text-center bg-ledger-red text-white font-medium py-2.5 rounded-xl text-sm">
               {lang === 'hi' ? 'Plans Dekhein' : 'View Plans'}

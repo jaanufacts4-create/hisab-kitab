@@ -22,7 +22,7 @@ const TIERS = [
     tagline: 'Poori team ke saath chalayein',
     features: [
       'Orders, Dashboard, Khata, Kharcha, Menu',
-      'Cashier aur Waiter staff add karein (PIN login)',
+      'Cashier aur Captain staff add karein (PIN login)',
       'Trends & Analytics — sales/order patterns',
       'Bill print / receipt printing',
     ],

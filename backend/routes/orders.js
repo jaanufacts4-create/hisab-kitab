@@ -162,7 +162,7 @@ router.get('/', async (req, res) => {
     let rows;
     if (req.query.filter === 'open') {
       [rows] = await pool.query(
-        `SELECT o.id,o.table_no,o.customer_name,o.status,o.payment_status,o.payment_mode,o.total,o.created_at,
+        `SELECT o.id,o.table_no,o.customer_name,o.status,o.payment_status,o.payment_mode,o.total,o.created_at,o.accepted_at,o.ready_at,
                 s.name AS collected_by_name
          FROM orders o LEFT JOIN staff s ON s.id = o.collected_by_staff_id
          WHERE o.restaurant_id=? AND o.status NOT IN ('billed','cancelled')
@@ -172,7 +172,7 @@ router.get('/', async (req, res) => {
     } else {
       const date = req.query.date || todayIST();
       [rows] = await pool.query(
-        `SELECT o.id,o.table_no,o.customer_name,o.status,o.payment_status,o.payment_mode,o.total,o.created_at,
+        `SELECT o.id,o.table_no,o.customer_name,o.status,o.payment_status,o.payment_mode,o.total,o.created_at,o.accepted_at,o.ready_at,
                 s.name AS collected_by_name
          FROM orders o LEFT JOIN staff s ON s.id = o.collected_by_staff_id
          WHERE o.restaurant_id=? AND DATE(o.created_at, '${IST_SHIFT}')=? ORDER BY o.created_at DESC`,
@@ -247,8 +247,9 @@ router.put('/:id/status', async (req, res) => {
     "UPDATE order_items SET status=? WHERE order_id=? AND status=?",
     [status, req.params.id, fromItemStatus]
   );
+  const tsCol = status === 'preparing' ? 'accepted_at' : 'ready_at';
   await pool.query(
-    'UPDATE orders SET status=? WHERE id=? AND restaurant_id=?',
+    `UPDATE orders SET status=?, ${tsCol}=datetime('now') WHERE id=? AND restaurant_id=?`,
     [status, req.params.id, req.restaurant_id]
   );
   res.json({ ok: true, status });
@@ -315,10 +316,4 @@ router.put('/:id/payment', async (req, res) => {
 // ---- Cancel order ----
 router.put('/:id/cancel', async (req, res) => {
   await pool.query(
-    "UPDATE orders SET status='cancelled' WHERE id=? AND restaurant_id=?",
-    [req.params.id, req.restaurant_id]
-  );
-  res.json({ ok: true });
-});
-
-module.exports = router;
+    "UPDATE orders SET status=

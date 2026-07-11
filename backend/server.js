@@ -1,3 +1,4 @@
+// v2 - inventory module
 require('dotenv').config({ quiet: true });
 const express = require('express');
 const cors = require('cors');

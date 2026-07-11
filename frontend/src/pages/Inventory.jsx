@@ -160,6 +160,12 @@ function ItemsTab({ items, onRefresh }) {
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+  // Per-item custom adjust: { [id]: { qty: '1', unit: item.unit } }
+  const [adj, setAdj] = useState({});
+  const getAdj = (item) => adj[item.id] || { qty: '1', unit: item.unit };
+  function setAdjField(id, field, val) {
+    setAdj(a => ({ ...a, [id]: { ...a[id], [field]: val } }));
+  }
 
   function startEdit(item) {
     setEditId(item.id);
@@ -209,8 +215,10 @@ function ItemsTab({ items, onRefresh }) {
     }
   }
 
-  async function adjustStock(item, delta) {
-    const newStock = Math.max(0, Number(item.stock) + delta);
+  async function adjustStock(item, direction) {
+    const a = getAdj(item);
+    const deltaInPrimaryUnit = convertUnit(Number(a.qty) || 0, a.unit, item.unit);
+    const newStock = Math.max(0, Number(item.stock) + direction * deltaInPrimaryUnit);
     try {
       await api.put(`/inventory/${item.id}`, { stock: newStock });
       await onRefresh();
@@ -309,25 +317,40 @@ function ItemsTab({ items, onRefresh }) {
                 <p className="font-medium text-sm text-ledger-ink">{item.name}</p>
                 <p className="text-xs text-ledger-inkSoft">Min: {item.min_stock} {item.unit}</p>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => adjustStock(item, -10)}
-                  className="w-7 h-7 rounded-full border border-ledger-red/20 text-ledger-inkSoft text-sm flex items-center justify-center"
-                >
-                  -
-                </button>
-                <span className={`text-sm font-semibold w-20 text-center ${item.stock <= item.min_stock && item.min_stock > 0 ? 'text-red-600' : 'text-green-700'}`}>
+              <span className={`text-sm font-semibold ${item.stock <= item.min_stock && item.min_stock > 0 ? 'text-red-600' : 'text-green-700'}`}>
                   {item.stock} {item.unit}
                 </span>
-                <button
-                  onClick={() => adjustStock(item, 10)}
-                  className="w-7 h-7 rounded-full border border-ledger-red/20 text-ledger-inkSoft text-sm flex items-center justify-center"
-                >
-                  +
-                </button>
-              </div>
             </div>
-            <div className="flex gap-2 mt-2">
+            {/* Custom adjust row */}
+            <div className="flex items-center gap-1.5 mt-2">
+              <button
+                onClick={() => adjustStock(item, -1)}
+                className="px-3 py-1.5 rounded-lg border border-red-200 text-red-500 text-xs font-bold"
+              >
+                − Use
+              </button>
+              <input
+                type="number"
+                min="0"
+                className="w-16 border border-ledger-red/20 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-1 focus:ring-ledger-red"
+                value={getAdj(item).qty}
+                onChange={e => setAdjField(item.id, 'qty', e.target.value)}
+              />
+              <select
+                className="w-14 border border-ledger-red/20 rounded-lg px-1 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red"
+                value={getAdj(item).unit || item.unit}
+                onChange={e => setAdjField(item.id, 'unit', e.target.value)}
+              >
+                {compatibleUnits(item.unit).map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+              <button
+                onClick={() => adjustStock(item, +1)}
+                className="px-3 py-1.5 rounded-lg border border-green-300 text-green-700 text-xs font-bold"
+              >
+                + Add
+              </button>
+            </div>
+            <div className="flex gap-2 mt-1.5">
               <button
                 onClick={() => startEdit(item)}
                 className="text-xs text-ledger-red border border-ledger-red/30 px-3 py-1 rounded-lg"

@@ -274,4 +274,12 @@ const pool = {
       query: txQuery,
       // libsql already opens the transaction in client.transaction('write')
       // above, so this is just kept for API compatibility with callers.
-      beginTr
+      beginTransaction: async function () {},
+      commit: async function () { if (active) { await tx.commit(); active = false; } },
+      rollback: async function () { if (active) { await tx.rollback(); active = false; } },
+      release: async function () { try { tx.close(); } catch (e) { /* ignore */ } },
+    };
+  },
+};
+
+module.exports = pool;

@@ -316,4 +316,10 @@ router.put('/:id/payment', async (req, res) => {
 // ---- Cancel order ----
 router.put('/:id/cancel', async (req, res) => {
   await pool.query(
-    "UPDATE orders SET status=
+    "UPDATE orders SET status='cancelled' WHERE id=? AND restaurant_id=?",
+    [req.params.id, req.restaurant_id]
+  );
+  res.json({ ok: true });
+});
+
+module.exports = router;

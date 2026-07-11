@@ -197,6 +197,33 @@ async function initDb() {
     await client.execute('ALTER TABLE orders ADD COLUMN collected_by_staff_id INTEGER NULL');
   } catch (e) { /* already exists */ }
 
+  // Migration 6: inventory + menu_recipes tables
+  try {
+    await client.execute(
+      "CREATE TABLE IF NOT EXISTS inventory (" +
+      "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+      "restaurant_id INTEGER NOT NULL," +
+      "name TEXT NOT NULL," +
+      "unit TEXT NOT NULL DEFAULT 'g'," +
+      "stock REAL NOT NULL DEFAULT 0," +
+      "min_stock REAL NOT NULL DEFAULT 0," +
+      "created_at TEXT NOT NULL DEFAULT (datetime('now'))," +
+      "FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE)"
+    );
+  } catch (e) { console.error('Migration 6a error:', e.message); }
+  try {
+    await client.execute(
+      "CREATE TABLE IF NOT EXISTS menu_recipes (" +
+      "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+      "menu_item_id INTEGER NOT NULL," +
+      "inventory_id INTEGER NOT NULL," +
+      "qty_per_serving REAL NOT NULL," +
+      "FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE," +
+      "FOREIGN KEY (inventory_id) REFERENCES inventory(id) ON DELETE CASCADE," +
+      "UNIQUE(menu_item_id, inventory_id))"
+    );
+  } catch (e) { console.error('Migration 6b error:', e.message); }
+
   try {
     const tables = await client.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
     console.log('DB tables (Turso):', toPlainRows(tables).map((t) => t.name).join(', '));

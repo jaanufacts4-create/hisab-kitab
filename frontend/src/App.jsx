@@ -20,6 +20,7 @@ import Settings from './pages/Settings';
 import ExpiredScreen from './pages/ExpiredScreen';
 import PublicMenu from './pages/PublicMenu';
 import PublicOrderStatus from './pages/PublicOrderStatus';
+import Inventory from './pages/Inventory';
 
 // `allowExpired` lets a couple of pages (Plans, so they can see what to
 // upgrade to) stay reachable even after the trial has expired — everything
@@ -49,6 +50,7 @@ function AppRoutes() {
       <Route path="/plans" element={<ProtectedRoute allowExpired><Plans /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute allowExpired><Admin /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
 
       {/* Customer-facing QR self-order — deliberately NOT behind
           ProtectedRoute, no staff login involved. Gated server-side per

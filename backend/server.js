@@ -17,6 +17,7 @@ app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/restaurant', require('./routes/restaurant'));
 // Super Admin only — manage all restaurant tenants (see ADMIN_PHONE in .env)
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/inventory', require('./routes/inventory'));
 // Customer-facing QR self-order flow — deliberately separate from the routes
 // above: no staff login involved, gated per-restaurant on plan='pro' inside
 // the route handlers themselves (see public.js).

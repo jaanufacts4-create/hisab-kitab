@@ -60,6 +60,23 @@ router.post('/', async (req, res) => {
         );
       }
     }
+
+    // Auto-deduct inventory based on recipes for each ordered item
+    for (const it of items) {
+      if (!it.menu_item_id) continue;
+      const [recipes] = await conn.query(
+        'SELECT inventory_id, qty_per_serving FROM menu_recipes WHERE menu_item_id = ?',
+        [it.menu_item_id]
+      );
+      for (const recipe of recipes) {
+        const deduct = recipe.qty_per_serving * it.qty;
+        await conn.query(
+          'UPDATE inventory SET stock = MAX(0, stock - ?) WHERE id = ? AND restaurant_id = ?',
+          [deduct, recipe.inventory_id, req.restaurant_id]
+        );
+      }
+    }
+
     await conn.commit();
     res.json({ id: orderId, subtotal, total, payment_status });
   } catch (err) {
@@ -111,6 +128,23 @@ router.post('/:id/items', async (req, res) => {
       'UPDATE orders SET subtotal=subtotal+?,total=total+?,status=? WHERE id=?',
       [addedAmount, addedAmount, newStatus, order.id]
     );
+
+    // Auto-deduct inventory for newly added items
+    for (const it of items) {
+      if (!it.menu_item_id) continue;
+      const [recipes] = await conn.query(
+        'SELECT inventory_id, qty_per_serving FROM menu_recipes WHERE menu_item_id = ?',
+        [it.menu_item_id]
+      );
+      for (const recipe of recipes) {
+        const deduct = recipe.qty_per_serving * it.qty;
+        await conn.query(
+          'UPDATE inventory SET stock = MAX(0, stock - ?) WHERE id = ? AND restaurant_id = ?',
+          [deduct, recipe.inventory_id, req.restaurant_id]
+        );
+      }
+    }
+
     await conn.commit();
     res.json({ ok: true, added: items.length, addedAmount, status: newStatus });
   } catch (err) {
@@ -278,4 +312,13 @@ router.put('/:id/payment', async (req, res) => {
   } finally { conn.release(); }
 });
 
-// ---- C
+// ---- Cancel order ----
+router.put('/:id/cancel', async (req, res) => {
+  await pool.query(
+    "UPDATE orders SET status='cancelled' WHERE id=? AND restaurant_id=?",
+    [req.params.id, req.restaurant_id]
+  );
+  res.json({ ok: true });
+});
+
+module.exports = router;

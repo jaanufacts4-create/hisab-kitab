@@ -15,6 +15,7 @@ export default function BottomNav() {
     { to: '/khata',     label: t('nav_khata'),    icon: '📖', roles: ['owner', 'cashier'] },
     { to: '/expenses',  label: t('nav_expenses'), icon: '✎',  roles: ['owner', 'cashier'] },
     { to: '/analytics', label: 'Trends',           icon: '📊', roles: ['owner'], minPlan: ['basic', 'pro'] },
+    { to: '/inventory', label: 'Stock',             icon: '📦', roles: ['owner'] },
     { to: '/menu',      label: t('nav_menu'),     icon: '☷',  roles: ['owner'] },
   ];
 

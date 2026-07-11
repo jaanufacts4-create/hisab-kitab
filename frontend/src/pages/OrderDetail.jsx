@@ -46,10 +46,11 @@ function buildThermalReceipt(order, restaurantName, discountAmt, gstAmt, finalTo
   lines.push(rule);
   if (discountAmt > 0) {
     lines.push(padRight('Subtotal', W - 8) + padLeft(Math.round(order.total), 8));
-    lines.push(padRight('Discount', W - 8) + padLeft('-' + Math.round(discountAmt), 8));
+    const discLabel = discountType === 'pct' ? `Discount@${discount}%` : 'Discount';
+    lines.push(padRight(discLabel, W - 8) + padLeft('-' + Math.round(discountAmt), 8));
   }
   if (gstAmt > 0) {
-    lines.push(padRight('GST', W - 8) + padLeft('+' + Math.round(gstAmt), 8));
+    lines.push(padRight(`GST@${gst}%`, W - 8) + padLeft('+' + Math.round(gstAmt), 8));
   }
   lines.push(rule);
   lines.push(padRight('TOTAL', W - 8) + padLeft(Math.round(finalTotal), 8));
@@ -353,7 +354,7 @@ export default function OrderDetail() {
             )}
             {discountAmt > 0 && (
               <div className="flex justify-between text-sm text-green-700">
-                <span>Discount {discountType === 'pct' ? `(${discount}%)` : ''}</span>
+                <span>{discountType === 'pct' ? `Discount @${discount}%` : 'Discount'}</span>
                 <span className="figure">− {rupee(discountAmt)}</span>
               </div>
             )}

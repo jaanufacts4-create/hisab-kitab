@@ -205,6 +205,11 @@ async function initDb() {
     await client.execute('ALTER TABLE orders ADD COLUMN ready_at TEXT NULL');
   } catch (e) { /* already exists */ }
 
+  // Migration 8: qty_unit on menu_recipes (unit-aware inventory deduction)
+  try {
+    await client.execute("ALTER TABLE menu_recipes ADD COLUMN qty_unit TEXT NOT NULL DEFAULT ''");
+  } catch (e) { /* already exists */ }
+
   // Migration 6: inventory + menu_recipes tables
   try {
     await client.execute(

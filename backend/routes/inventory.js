@@ -88,7 +88,7 @@ router.delete('/:id', requireRole('owner'), async (req, res) => {
 router.get('/recipes/:menu_item_id', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT mr.id, mr.inventory_id, mr.qty_per_serving,
+      `SELECT mr.id, mr.inventory_id, mr.qty_per_serving, mr.qty_unit,
               i.name AS ingredient_name, i.unit
        FROM menu_recipes mr
        JOIN inventory i ON i.id = mr.inventory_id
@@ -106,7 +106,7 @@ router.get('/recipes/:menu_item_id', async (req, res) => {
 router.get('/recipes', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT mr.id, mr.menu_item_id, mr.inventory_id, mr.qty_per_serving,
+      `SELECT mr.id, mr.menu_item_id, mr.inventory_id, mr.qty_per_serving, mr.qty_unit,
               m.name AS menu_item_name, i.name AS ingredient_name, i.unit
        FROM menu_recipes mr
        JOIN menu_items m ON m.id = mr.menu_item_id
@@ -125,7 +125,7 @@ router.get('/recipes', async (req, res) => {
 // POST /api/inventory/recipes  — add/update a recipe ingredient
 router.post('/recipes', requireRole('owner', 'cashier'), async (req, res) => {
   try {
-    const { menu_item_id, inventory_id, qty_per_serving } = req.body;
+    const { menu_item_id, inventory_id, qty_per_serving, qty_unit = '' } = req.body;
     if (!menu_item_id || !inventory_id || qty_per_serving == null) {
       return res.status(400).json({ error: 'menu_item_id, inventory_id, qty_per_serving are required' });
     }
@@ -138,14 +138,14 @@ router.post('/recipes', requireRole('owner', 'cashier'), async (req, res) => {
 
     // Upsert — update qty if the pair already exists
     await pool.query(
-      `INSERT INTO menu_recipes (menu_item_id, inventory_id, qty_per_serving)
-       VALUES (?,?,?)
+      `INSERT INTO menu_recipes (menu_item_id, inventory_id, qty_per_serving, qty_unit)
+       VALUES (?,?,?,?)
        ON CONFLICT(menu_item_id, inventory_id)
-       DO UPDATE SET qty_per_serving = excluded.qty_per_serving`,
-      [menu_item_id, inventory_id, Number(qty_per_serving)]
+       DO UPDATE SET qty_per_serving = excluded.qty_per_serving, qty_unit = excluded.qty_unit`,
+      [menu_item_id, inventory_id, Number(qty_per_serving), qty_unit.trim()]
     );
     const [rows] = await pool.query(
-      `SELECT mr.id, mr.menu_item_id, mr.inventory_id, mr.qty_per_serving,
+      `SELECT mr.id, mr.menu_item_id, mr.inventory_id, mr.qty_per_serving, mr.qty_unit,
               i.name AS ingredient_name, i.unit
        FROM menu_recipes mr JOIN inventory i ON i.id = mr.inventory_id
        WHERE mr.menu_item_id = ? AND mr.inventory_id = ?`,

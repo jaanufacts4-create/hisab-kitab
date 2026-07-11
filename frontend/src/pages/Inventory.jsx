@@ -5,6 +5,18 @@ import BottomNav from '../components/BottomNav';
 
 const TABS = ['Stock', 'Items', 'Recipes'];
 
+// Which units are compatible with a given inventory unit
+const UNIT_GROUPS = {
+  g:   ['g', 'kg'],
+  kg:  ['g', 'kg'],
+  ml:  ['ml', 'L'],
+  l:   ['ml', 'L'],
+  L:   ['ml', 'L'],
+};
+function compatibleUnits(invUnit) {
+  return UNIT_GROUPS[(invUnit || '').toLowerCase()] || [invUnit || 'pcs'];
+}
+
 export default function Inventory() {
   const [tab, setTab] = useState('Stock');
   const [items, setItems] = useState([]);
@@ -290,7 +302,7 @@ function ItemsTab({ items, onRefresh }) {
 
 function RecipesTab({ recipes, menuItems, items, onRefresh }) {
   const [selectedMenu, setSelectedMenu] = useState('');
-  const [form, setForm] = useState({ inventory_id: '', qty_per_serving: '' });
+  const [form, setForm] = useState({ inventory_id: '', qty_per_serving: '', qty_unit: '' });
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -306,8 +318,9 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
         menu_item_id: Number(selectedMenu),
         inventory_id: Number(form.inventory_id),
         qty_per_serving: Number(form.qty_per_serving),
+        qty_unit: form.qty_unit,
       });
-      setForm({ inventory_id: '', qty_per_serving: '' });
+      setForm({ inventory_id: '', qty_per_serving: '', qty_unit: '' });
       await onRefresh();
     } catch (e) {
       const errMsg = e.response?.data?.error || e.message || 'Save failed';
@@ -357,7 +370,10 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
               <select
                 className="flex-1 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red"
                 value={form.inventory_id}
-                onChange={e => setForm(f => ({ ...f, inventory_id: e.target.value }))}
+                onChange={e => {
+                  const selItem = items.find(i => String(i.id) === e.target.value);
+                  setForm(f => ({ ...f, inventory_id: e.target.value, qty_unit: selItem?.unit || '' }));
+                }}
               >
                 <option value="">Select ingredient</option>
                 {items.map(i => (
@@ -366,11 +382,24 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
               </select>
               <input
                 type="number"
-                className="w-24 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ledger-red"
+                className="w-20 border border-ledger-red/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ledger-red"
                 placeholder="Qty"
                 value={form.qty_per_serving}
                 onChange={e => setForm(f => ({ ...f, qty_per_serving: e.target.value }))}
               />
+              {form.inventory_id && (() => {
+                const selItem = items.find(i => String(i.id) === form.inventory_id);
+                const units = compatibleUnits(selItem?.unit);
+                return (
+                  <select
+                    className="w-16 border border-ledger-red/20 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-ledger-red"
+                    value={form.qty_unit || selItem?.unit || ''}
+                    onChange={e => setForm(f => ({ ...f, qty_unit: e.target.value }))}
+                  >
+                    {units.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                );
+              })()}
             </div>
 
             {msg && <p className="text-red-600 text-xs">{msg}</p>}
@@ -390,7 +419,7 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
                   <div key={r.id} className="flex justify-between items-center text-sm">
                     <span className="text-ledger-ink">{r.ingredient_name}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-ledger-inkSoft">{r.qty_per_serving} {r.unit}</span>
+                      <span className="text-ledger-inkSoft">{r.qty_per_serving} {r.qty_unit || r.unit}</span>
                       <button
                         onClick={() => delRecipe(r.id)}
                         className="text-red-400 text-xs border border-red-200 px-2 py-0.5 rounded"
@@ -420,7 +449,7 @@ function RecipesTab({ recipes, menuItems, items, onRefresh }) {
               {mrs.map(r => (
                 <div key={r.id} className="flex justify-between text-xs text-ledger-inkSoft">
                   <span>{r.ingredient_name}</span>
-                  <span>{r.qty_per_serving} {r.unit}</span>
+                  <span>{r.qty_per_serving} {r.qty_unit || r.unit}</span>
                 </div>
               ))}
             </div>

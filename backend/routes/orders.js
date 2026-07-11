@@ -6,6 +6,19 @@ const { todayIST, IST_SHIFT } = require('../utils/date');
 const router = express.Router();
 router.use(authMiddleware);
 
+// Unit conversion for inventory deduction
+// e.g. recipe: 200g, inventory: kg → deduct 0.2 kg
+function convertToInventoryUnit(qty, fromUnit, toUnit) {
+  if (!fromUnit || fromUnit === toUnit) return qty;
+  const from = fromUnit.toLowerCase();
+  const to   = toUnit.toLowerCase();
+  if (from === 'g'  && to === 'kg') return qty / 1000;
+  if (from === 'kg' && to === 'g')  return qty * 1000;
+  if (from === 'ml' && (to === 'l' || to === 'litre' || to === 'liter')) return qty / 1000;
+  if ((from === 'l' || from === 'litre' || from === 'liter') && to === 'ml') return qty * 1000;
+  return qty; // incompatible units — use as-is
+}
+
 // ---- Create a new order ----
 router.post('/', async (req, res) => {
   const { table_no, customer_name, customer_phone, items, payment } = req.body;
@@ -65,11 +78,13 @@ router.post('/', async (req, res) => {
     for (const it of items) {
       if (!it.menu_item_id) continue;
       const [recipes] = await conn.query(
-        'SELECT inventory_id, qty_per_serving FROM menu_recipes WHERE menu_item_id = ?',
+        `SELECT mr.inventory_id, mr.qty_per_serving, mr.qty_unit, i.unit AS inv_unit
+         FROM menu_recipes mr JOIN inventory i ON i.id = mr.inventory_id
+         WHERE mr.menu_item_id = ?`,
         [it.menu_item_id]
       );
       for (const recipe of recipes) {
-        const deduct = recipe.qty_per_serving * it.qty;
+        const deduct = convertToInventoryUnit(recipe.qty_per_serving * it.qty, recipe.qty_unit, recipe.inv_unit);
         await conn.query(
           'UPDATE inventory SET stock = MAX(0, stock - ?) WHERE id = ? AND restaurant_id = ?',
           [deduct, recipe.inventory_id, req.restaurant_id]
@@ -133,11 +148,13 @@ router.post('/:id/items', async (req, res) => {
     for (const it of items) {
       if (!it.menu_item_id) continue;
       const [recipes] = await conn.query(
-        'SELECT inventory_id, qty_per_serving FROM menu_recipes WHERE menu_item_id = ?',
+        `SELECT mr.inventory_id, mr.qty_per_serving, mr.qty_unit, i.unit AS inv_unit
+         FROM menu_recipes mr JOIN inventory i ON i.id = mr.inventory_id
+         WHERE mr.menu_item_id = ?`,
         [it.menu_item_id]
       );
       for (const recipe of recipes) {
-        const deduct = recipe.qty_per_serving * it.qty;
+        const deduct = convertToInventoryUnit(recipe.qty_per_serving * it.qty, recipe.qty_unit, recipe.inv_unit);
         await conn.query(
           'UPDATE inventory SET stock = MAX(0, stock - ?) WHERE id = ? AND restaurant_id = ?',
           [deduct, recipe.inventory_id, req.restaurant_id]
